@@ -1,219 +1,1285 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Focusly — ADHD Support</title>
-<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-body{margin:0;font-family:'DM Sans',sans-serif;background:#FDF8F2;color:#2E1F0F}
-#app{display:flex}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#FDF8F2;font-family:'DM Sans','Segoe UI',sans-serif;color:#2E1F0F;min-height:100vh}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#F2EBE0}
+::-webkit-scrollbar-thumb{background:#E4D8C8;border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade-up{animation:fadeUp .35s ease both}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
-/* Sidebar */
+/* ── SIDEBAR ─────────────────────────────────────────────── */
 #sidebar{
-width:220px;background:#F2EBE0;height:100vh;
-padding:20px;position:fixed;left:0;top:0
+position:fixed;top:0;left:0;height:100vh;width:220px;z-index:200;
+background:#F2EBE0;border-right:1px solid #E4D8C8;
+display:flex;flex-direction:column;padding:24px 0;
+overflow-y:auto;overflow-x:hidden;
+transition:transform .28s cubic-bezier(.4,0,.2,1);
 }
-#sidebar button{
-display:block;width:100%;margin-bottom:8px;
-padding:10px;border:none;border-radius:8px;
-background:transparent;cursor:pointer;text-align:left
-}
-#sidebar button.active{background:#FAEADE;color:#9E5636}
+#sidebar.collapsed{transform:translateX(-220px)}
+#sidebar.floating{box-shadow:6px 0 28px rgba(60,30,10,.15)}
 
-/* Main */
-#main{margin-left:220px;padding:24px;flex:1}
+/* ── OVERLAY (unpinned) ──────────────────────────────────── */
+#sb-overlay{
+display:none;position:fixed;inset:0;z-index:199;
+background:rgba(46,31,15,.3);backdrop-filter:blur(2px);
+}
+#sb-overlay.visible{display:block}
 
-/* Cards */
-.card{
-background:#fff;border-radius:14px;
-padding:16px;margin-bottom:16px;
-border:1px solid #E4D8C8
+/* ── HAMBURGER TOGGLE ────────────────────────────────────── */
+#sb-toggle{
+position:fixed;top:16px;z-index:300;
+width:36px;height:36px;border-radius:10px;
+border:1px solid #E4D8C8;background:#F2EBE0;
+cursor:pointer;display:flex;align-items:center;justify-content:center;
+box-shadow:0 2px 8px rgba(60,30,10,.1);
+transition:left .28s cubic-bezier(.4,0,.2,1),background .15s;
+}
+#sb-toggle:hover{background:#E4D8C8}
+
+/* ── MAIN ────────────────────────────────────────────────── */
+#main{
+min-height:100vh;padding:32px 36px;max-width:900px;
+transition:margin-left .28s cubic-bezier(.4,0,.2,1);
 }
 
-/* Buttons */
-.btn{
-padding:8px 14px;border:none;border-radius:8px;
-background:#C4714A;color:#fff;cursor:pointer
-}
+/* ── SIDEBAR INTERNALS ───────────────────────────────────── */
+.sb-brand{padding:0 16px 24px;display:flex;align-items:center;gap:10px}
+.sb-logo{width:34px;height:34px;background:#C4714A;border-radius:10px;
+display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-name{font-family:‘Lora’,Georgia,serif;font-weight:700;font-size:15px;color:#2E1F0F}
+.sb-sub{font-size:11px;color:#A08B76}
+.sb-pin{width:26px;height:26px;border-radius:7px;border:1px solid #E4D8C8;
+background:transparent;cursor:pointer;display:flex;align-items:center;
+justify-content:center;margin-left:auto;flex-shrink:0;transition:all .15s}
+.sb-pin:hover{background:#E4D8C8}
+.sb-pin.on{background:#FAEADE;border-color:#C4714A}
+.sb-nav{flex:1;padding:0 10px;display:flex;flex-direction:column;gap:2px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;
+border-radius:10px;border:none;cursor:pointer;width:100%;text-align:left;
+background:transparent;color:#6B5240;font-family:‘DM Sans’,sans-serif;
+font-size:14px;font-weight:400;transition:all .15s}
+.nav-btn:hover{background:#E4D8C8}
+.nav-btn.active{background:#FAEADE;color:#9E5636;font-weight:600}
+.sb-foot{padding:16px 20px;border-top:1px solid #E4D8C8;font-size:11px;color:#A08B76;line-height:1.5}
 
-/* Input */
-input{
-padding:8px;border-radius:8px;
-border:1px solid #E4D8C8;width:100%
-}
+/* ── CARDS ───────────────────────────────────────────────── */
+.card{background:#fff;border-radius:16px;border:1px solid #E4D8C8;
+box-shadow:0 2px 12px rgba(60,30,10,.08)}
 
-/* Task */
-.task{
-display:flex;justify-content:space-between;
-padding:10px;border-radius:8px;
-border:1px solid #E4D8C8;margin-bottom:8px
-}
-.task.done{opacity:.6;text-decoration:line-through}
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:10px;
+font-family:‘DM Sans’,sans-serif;font-weight:500;cursor:pointer;
+transition:opacity .18s;border:none;font-size:14px;padding:10px 20px}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:#C4714A;color:#fff}
+.btn-secondary{background:#F2EBE0;color:#2E1F0F;border:1px solid #E4D8C8}
+.btn-ghost{background:transparent;color:#6B5240}
+.btn-green{background:#4E8B6A;color:#fff}
+.btn-sm{padding:6px 14px!important;font-size:13px!important}
+
+/* ── BADGE ───────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;padding:2px 10px;
+border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.04em}
+
+/* ── INPUTS ──────────────────────────────────────────────── */
+input[type=text],input[type=password],textarea,select{
+width:100%;padding:10px 14px;border-radius:10px;border:1px solid #E4D8C8;
+background:#FDF8F2;font-family:‘DM Sans’,sans-serif;font-size:14px;
+color:#2E1F0F;outline:none;transition:border-color .2s}
+input[type=text]:focus,input[type=password]:focus,textarea:focus{border-color:#C4714A}
+input[type=time]{padding:8px 12px;border-radius:8px;border:1px solid #E4D8C8;
+background:#FDF8F2;font-family:‘DM Sans’,sans-serif;font-size:16px;color:#2E1F0F;outline:none}
+textarea{resize:vertical}
+
+/* ── TOGGLE SWITCH ───────────────────────────────────────── */
+.tog{width:44px;height:24px;border-radius:999px;border:none;cursor:pointer;
+position:relative;transition:background .2s;flex-shrink:0}
+.tog-dot{width:18px;height:18px;border-radius:50%;background:#fff;
+position:absolute;top:3px;transition:left .2s}
+
+/* ── MODAL ───────────────────────────────────────────────── */
+.modal-bg{position:fixed;inset:0;background:rgba(30,15,5,.45);z-index:1000;
+display:flex;align-items:center;justify-content:center;padding:16px;
+backdrop-filter:blur(3px)}
+.modal-box{background:#fff;border-radius:20px;width:100%;max-height:85vh;
+overflow-y:auto;box-shadow:0 8px 32px rgba(60,30,10,.12);animation:fadeUp .3s ease}
+.modal-head{display:flex;align-items:center;justify-content:space-between;
+padding:20px 24px;border-bottom:1px solid #E4D8C8}
+.modal-head h3{font-family:‘Lora’,Georgia,serif;font-size:18px;font-weight:600}
+.modal-close{background:none;border:none;cursor:pointer;color:#A08B76;padding:4px;
+display:flex;align-items:center}
+.modal-body{padding:20px 24px}
+
+/* ── CHECKBOX ────────────────────────────────────────────── */
+.cb{width:22px;height:22px;border-radius:6px;border:2px solid #E4D8C8;
+background:transparent;cursor:pointer;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cb.on{background:#4E8B6A;border-color:#4E8B6A}
+.cb-sm{width:18px;height:18px;border-radius:4px}
+
+/* ── ICON BUTTON ─────────────────────────────────────────── */
+.icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid #E4D8C8;
+background:#FDF8F2;cursor:pointer;display:flex;align-items:center;
+justify-content:center;transition:background .15s}
+.icon-btn:hover{background:#F2EBE0}
+
+/* ── TIP PILL ────────────────────────────────────────────── */
+.tip-pill{padding:6px 12px;border-radius:999px;border:1px solid #E4D8C8;
+background:#FDF8F2;font-size:12px;color:#6B5240;cursor:pointer;
+display:inline-flex;align-items:center;gap:6px;
+font-family:‘DM Sans’,sans-serif;transition:background .15s}
+.tip-pill:hover{background:#F2EBE0}
+
+/* ── PROGRESS ────────────────────────────────────────────── */
+.prog-track{flex:1;height:4px;border-radius:2px;background:#E4D8C8}
+.prog-fill{height:100%;border-radius:2px;transition:width .4s ease}
+
+@media(max-width:700px){#main{padding:16px}}
 </style>
+
 </head>
 <body>
-<div id="app">
-  <div id="sidebar">
-    <h2 style="font-family:Lora;">Focusly</h2>
-    <button onclick="navigate('dashboard')" id="nav-dashboard">Today</button>
-    <button onclick="navigate('tasks')" id="nav-tasks">Tasks</button>
-    <button onclick="navigate('focus')" id="nav-focus">Focus</button>
+
+<!-- ── SIDEBAR TOGGLE BUTTON ── -->
+
+<button id="sb-toggle" aria-label="Toggle menu" onclick="sbToggle()">
+  <svg id="tog-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B5240" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<!-- ── OVERLAY ── -->
+
+<div id="sb-overlay" onclick="sbToggle()"></div>
+
+<!-- ── SIDEBAR ── -->
+
+<nav id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 007 4.5v.05A2.5 2.5 0 004.55 7H4.5A2.5 2.5 0 002 9.5v1A2.5 2.5 0 004.5 13h.05A2.5 2.5 0 007 15.5v.05A2.5 2.5 0 009.5 18H10v1a1 1 0 002 0v-1h.5A2.5 2.5 0 0015 15.55V15.5A2.5 2.5 0 0017.5 13h.05A2.5 2.5 0 0020 10.5v-1A2.5 2.5 0 0017.5 7h-.05A2.5 2.5 0 0015 4.55V4.5A2.5 2.5 0 0012.5 2h-3z"/></svg>
+    </div>
+    <div><div class="sb-name">Focusly</div><div class="sb-sub">ADHD Support</div></div>
+    <button class="sb-pin" id="sb-pin" onclick="sbPin()" title="Pin sidebar">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B5240" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L8 8H3l4 4-1.5 7.5L12 16l6.5 3.5L17 12l4-4h-5L12 2z"/></svg>
+    </button>
   </div>
-  <div id="main"></div>
-</div>
+  <div class="sb-nav">
+    <button class="nav-btn active" data-view="dashboard" onclick="goTo('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Today
+    </button>
+    <button class="nav-btn" data-view="tasks" onclick="goTo('tasks')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Tasks
+    </button>
+    <button class="nav-btn" data-view="projects" onclick="goTo('projects')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+      Projects
+    </button>
+    <button class="nav-btn" data-view="focus" onclick="goTo('focus')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Focus
+    </button>
+    <button class="nav-btn" data-view="reminders" onclick="goTo('reminders')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Reminders
+    </button>
+    <button class="nav-btn" data-view="sleep" onclick="goTo('sleep')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      Sleep
+    </button>
+    <button class="nav-btn" data-view="toolkit" onclick="goTo('toolkit')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+      Toolkit
+    </button>
+  </div>
+  <div class="sb-foot">💡 Remember: One thing at a time is progress.</div>
+</nav>
+
+<!-- ── MAIN CONTENT ── -->
+
+<main id="main"></main>
+
+<!-- ── MODAL ROOT ── -->
+
+<div id="modal-root"></div>
+
 <script>
-// ===== SAFE ERROR LOGGING =====
-window.onerror = (m,s,l,c,e)=>console.error(m,l,c);
+// ═══════════════════════════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════════════════════════
+var SB = { open: true, pinned: true };
 
-// ===== STATE =====
-const S = JSON.parse(localStorage.getItem('focusly')) || {
-  view:'dashboard',
-  tasks:[],
-  focus:{running:false,secs:1500}
-};
+function sbApply() {
+  var sidebar   = document.getElementById('sidebar');
+  var main      = document.getElementById('main');
+  var overlay   = document.getElementById('sb-overlay');
+  var pin       = document.getElementById('sb-pin');
+  var togBtn    = document.getElementById('sb-toggle');
 
-// ===== SAVE =====
-function save(){
-  localStorage.setItem('focusly', JSON.stringify(S));
-}
-
-// ===== NAV =====
-function navigate(v){
-  S.view = v;
-  render();
-}
-
-// ===== RENDER =====
-function render(){
-  save();
-
-  document.querySelectorAll('#sidebar button').forEach(b=>b.classList.remove('active'));
-  const navBtn = document.getElementById('nav-'+S.view);
-  if(navBtn) navBtn.classList.add('active');
-
-  const m = document.getElementById('main');
-  m.innerHTML = '';
-
-  if(S.view === 'dashboard') renderDashboard(m);
-  if(S.view === 'tasks') renderTasks(m);
-  if(S.view === 'focus') renderFocus(m);
-}
-
-// ===== DASHBOARD =====
-function renderDashboard(m){
-  const c = card();
-  c.innerHTML = "<h2>Today</h2><p>Keep it simple. One thing at a time.</p>";
-  m.appendChild(c);
-}
-
-// ===== TASKS =====
-function renderTasks(m){
-  const c = card();
-
-  const input = document.createElement('input');
-  input.placeholder = "Add a task...";
-  
-  const addBtn = button("Add", ()=>{
-    if(!input.value.trim()) return;
-    S.tasks.push({id:Date.now(),title:input.value,done:false});
-    input.value="";
-    render();
-  });
-
-  c.append(input, addBtn);
-
-  S.tasks.forEach(t=>{
-    const row = document.createElement('div');
-    row.className = 'task' + (t.done?' done':'');
-    
-    const txt = document.createElement('span');
-    txt.textContent = t.title;
-
-    const actions = document.createElement('div');
-
-    const doneBtn = button("✓", ()=>{
-      t.done = !t.done;
-      render();
-    });
-
-    const delBtn = button("✕", ()=>{
-      S.tasks = S.tasks.filter(x=>x.id!==t.id);
-      render();
-    });
-
-    actions.append(doneBtn, delBtn);
-    row.append(txt, actions);
-    c.appendChild(row);
-  });
-
-  m.appendChild(c);
-}
-
-// ===== FOCUS TIMER =====
-let interval = null;
-
-function renderFocus(m){
-  const c = card();
-
-  const time = document.createElement('h1');
-  time.style.fontFamily = 'Lora';
-
-  function update(){
-    const min = Math.floor(S.focus.secs/60);
-    const sec = S.focus.secs % 60;
-    time.textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+  if (SB.open) {
+    sidebar.classList.remove('collapsed');
+    if (SB.pinned) {
+      sidebar.classList.remove('floating');
+      overlay.classList.remove('visible');
+      main.style.marginLeft = '220px';
+      togBtn.style.left     = '232px';
+    } else {
+      sidebar.classList.add('floating');
+      overlay.classList.add('visible');
+      main.style.marginLeft = '0';
+      togBtn.style.left     = '232px';
+    }
+  } else {
+    sidebar.classList.add('collapsed');
+    sidebar.classList.remove('floating');
+    overlay.classList.remove('visible');
+    main.style.marginLeft = '0';
+    togBtn.style.left     = '12px';
   }
 
-  update();
-
-  const startBtn = button("Start", ()=>{
-    if(interval) return;
-
-    S.focus.running = true;
-
-    interval = setInterval(()=>{
-      S.focus.secs--;
-      if(S.focus.secs <= 0){
-        clearInterval(interval);
-        interval = null;
-        S.focus.running = false;
-        S.focus.secs = 1500;
-      }
-      update();
-      save();
-    },1000);
-  });
-
-  const resetBtn = button("Reset", ()=>{
-    clearInterval(interval);
-    interval = null;
-    S.focus.secs = 1500;
-    update();
-  });
-
-  c.append(time, startBtn, resetBtn);
-  m.appendChild(c);
+  if (pin) {
+    if (SB.pinned) {
+      pin.classList.add('on');
+      pin.title = 'Unpin sidebar';
+    } else {
+      pin.classList.remove('on');
+      pin.title = 'Pin sidebar open';
+    }
+  }
 }
 
-// ===== HELPERS =====
-function card(){
-  const d = document.createElement('div');
-  d.className='card';
-  return d;
+function sbToggle() {
+  SB.open = !SB.open;
+  sbApply();
 }
 
-function button(text,fn){
-  const b = document.createElement('button');
-  b.className='btn';
-  b.textContent=text;
-  b.onclick=fn;
+function sbPin() {
+  SB.pinned = !SB.pinned;
+  SB.open   = true;
+  sbApply();
+}
+
+// ═══════════════════════════════════════════════════════
+//  SVG ICONS
+// ═══════════════════════════════════════════════════════
+var IC = {
+  info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  plus:    '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  check:   '<polyline points="20 6 9 17 5 12"/>',
+  trash:   '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>',
+  chevD:   '<polyline points="6 9 12 15 18 9"/>',
+  chevR:   '<polyline points="9 18 15 12 9 6"/>',
+  play:    '<polygon points="5 3 19 12 5 21 5 3"/>',
+  pause:   '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
+  refresh: '<polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>',
+  cal:     '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  close:   '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  capture: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+  star:    '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+};
+function ic(n, sz, col, st) {
+  sz  = sz  || 18;
+  col = col || 'currentColor';
+  st  = st  || '';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="'+st+'">'+(IC[n]||'')+'</svg>';
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+var S = {
+  view: 'dashboard',
+  energy: null,
+  showCapture: false,
+  expandedTask: null,
+  breathIv: null,
+  timerIv: null,
+  tasks: [
+    {id:1,title:'Complete monthly report',notes:'For team meeting',dueDate:'Today',done:false,
+     subtasks:[{id:11,title:'Gather data from spreadsheet',done:true},{id:12,title:'Write summary paragraph',done:false},{id:13,title:'Send to manager',done:false}]},
+    {id:2,title:'Book GP appointment',notes:'Medication review',dueDate:'',done:false,subtasks:[]},
+    {id:3,title:'Reply to school emails',notes:'',dueDate:'This week',done:false,subtasks:[]},
+    {id:4,title:'Renew car insurance',notes:'Due end of month',dueDate:'',done:true,subtasks:[]},
+  ],
+  captures: [{id:1,text:'Call Mum on Sunday'},{id:2,text:'Look into ADHD coaching referral'}],
+  reminders: [
+    {id:1,emoji:'💊',label:'Medication', time:'08:00',   repeat:'Daily',   active:true},
+    {id:2,emoji:'💧',label:'Hydration',  time:'Every 2h',repeat:'Daily',   active:true},
+    {id:3,emoji:'🔑',label:'Keys check', time:'07:45',   repeat:'Weekdays',active:true},
+    {id:4,emoji:'🏃',label:'School run', time:'15:15',   repeat:'Weekdays',active:false},
+    {id:5,emoji:'😴',label:'Wind down',  time:'21:30',   repeat:'Daily',   active:false},
+  ],
+  projects: [
+    {id:1,name:'Home Renovation',  emoji:'🏠',color:'#C89030',cLight:'#FBF2DC',tasks:8, notes:'Bathroom first'},
+    {id:2,name:'Job Applications', emoji:'💼',color:'#7065A8',cLight:'#ECEAF8',tasks:5, notes:'CV draft done'},
+    {id:3,name:'Study: Level 3',   emoji:'📚',color:'#4E8B6A',cLight:'#E0F0E8',tasks:12,notes:'Assignment due March'},
+  ],
+  focus: {mode:'idle',secs:25*60,cycle:0,dur:25,brk:5,sound:'none'},
+  sleep: {
+    bed:'22:00', wake:'07:00', wind:null,
+    strat:[
+      {id:'s1',label:'Screen-free 60 mins before bed',on:true},
+      {id:'s2',label:'Cool room (16–18°C)',on:false},
+      {id:'s3',label:'Consistent wind-down routine',on:true},
+      {id:'s4',label:'Single alarm only (no snoozing)',on:false},
+      {id:'s5',label:'White/brown noise for sleep',on:true},
+    ],
+    list:[
+      {id:0,label:'Alarm off ✅',done:false},{id:1,label:'Stretch 2 minutes',done:false},
+      {id:2,label:'Drink water',done:false},{id:3,label:'Medication',done:false},
+      {id:4,label:'Open curtains',done:false},{id:5,label:'Quick shower',done:false},
+      {id:6,label:'Bag check',done:false},{id:7,label:'Breakfast',done:false},
+    ],
+  },
+};
+
+var TIPS = {
+  initiation:{title:'Task Initiation Strategies',color:'#C89030',bg:'#FBF2DC',
+    tips:['⚡ 2-Minute Rule: If it takes under 2 minutes, do it now.','🚪 Body Double: Work alongside someone (in person or virtually).','🎵 Use a specific playlist you only play when working.','⏱️ Set a 5-minute timer just to "start" — stopping is allowed.','📍 Anchor to an existing habit (after coffee → start task).','🔔 "When X happens, I will do Y".'],
+    source:'CHADD, ADDitude Magazine, NICE NG87'},
+  overwhelm:{title:'Overwhelm Reduction',color:'#C45A7A',bg:'#FAEAF0',
+    tips:['🧩 Break task into the smallest possible first step.','📝 Write ALL subtasks out — externalise the mental load.','🎯 Choose ONE thing to do right now.','😮‍💨 Box breathing: 4s in → 4s hold → 4s out → 4s hold.','🏃 Move your body first if frozen.','💬 Say aloud what you\'re about to do.'],
+    source:'ADHD Foundation, ADDitude Magazine'},
+  timeBlindness:{title:'Time-Blindness Strategies',color:'#7065A8',bg:'#ECEAF8',
+    tips:['⏰ Use visible, analogue timers on your desk.','📅 Time block your calendar with buffer zones.','🔔 Set reminders 15 min AND 5 min before everything.','📱 Use interval timers to resurface regularly.','✍️ Estimate task time, then triple it.','🗓️ Review tomorrow\'s schedule every evening.'],
+    source:'Dr. Russell Barkley, CHADD'},
+  environment:{title:'Environment Setup',color:'#4E8B6A',bg:'#E0F0E8',
+    tips:['🎧 Noise-cancelling headphones or brown/white noise.','📵 Put phone in another room.','💡 Bright, cool-toned lighting for focus tasks.','🌡️ Cooler room temperature aids concentration.','🗂️ Clear desk of everything not related to current task.','🌿 A plant or natural element can reduce stress.'],
+    source:'ADHD UK, ADDitude Magazine'},
+};
+
+// ═══════════════════════════════════════════════════════
+//  DOM HELPERS
+// ═══════════════════════════════════════════════════════
+function d(style, html) {
+  var e = document.createElement('div');
+  if (style) Object.assign(e.style, style);
+  if (html)  e.innerHTML = html;
+  return e;
+}
+function p(style, text) {
+  var e = document.createElement('p');
+  if (style) Object.assign(e.style, style);
+  e.textContent = text;
+  return e;
+}
+function hx(tag, style, html) {
+  var e = document.createElement(tag);
+  if (style) Object.assign(e.style, style);
+  if (html)  e.innerHTML = html;
+  return e;
+}
+function card(style) {
+  var e = document.createElement('div');
+  e.className = 'card';
+  if (style) Object.assign(e.style, style);
+  return e;
+}
+function badge(text, color, bg) {
+  var e = document.createElement('span');
+  e.className = 'badge';
+  e.style.color = color;
+  e.style.background = bg;
+  e.textContent = text;
+  return e;
+}
+function btn(html, cls, fn) {
+  var b = document.createElement('button');
+  b.className = 'btn ' + cls;
+  b.innerHTML = html;
+  b.onclick   = fn;
   return b;
 }
+function iconBtn(name, fn) {
+  var b = document.createElement('button');
+  b.className = 'icon-btn';
+  b.innerHTML = ic(name, 13, '#A08B76');
+  b.onclick   = fn;
+  return b;
+}
+function tog(active, fn, activeCol) {
+  activeCol = activeCol || '#4E8B6A';
+  var w = document.createElement('button');
+  w.className = 'tog';
+  w.style.background = active ? activeCol : '#E4D8C8';
+  w.onclick = fn;
+  var dot = document.createElement('div');
+  dot.className = 'tog-dot';
+  dot.style.left = active ? '23px' : '3px';
+  w.appendChild(dot);
+  return w;
+}
+function inp(placeholder, value) {
+  var i = document.createElement('input');
+  i.type = 'text';
+  i.placeholder = placeholder || '';
+  i.value = value || '';
+  return i;
+}
+function ta(placeholder, value, rows) {
+  var t = document.createElement('textarea');
+  t.placeholder = placeholder || '';
+  t.value = value || '';
+  t.rows  = rows || 3;
+  t.style.width = '100%';
+  return t;
+}
+function section() {
+  var e = document.createElement('div');
+  e.className = 'fade-up';
+  e.style.cssText = 'display:flex;flex-direction:column;gap:20px';
+  return e;
+}
+function row(justify) {
+  var e = document.createElement('div');
+  e.style.cssText = 'display:flex;align-items:center;gap:10px' + (justify ? ';justify-content:' + justify : '');
+  return e;
+}
+function grid2() {
+  var e = document.createElement('div');
+  e.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:16px';
+  return e;
+}
+function gap(px) {
+  var e = document.createElement('div');
+  e.style.height = px + 'px';
+  return e;
+}
 
-// INIT
-document.addEventListener('DOMContentLoaded', render);
+// ═══════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════
+function showModal(title, width, fn) {
+  var root = document.getElementById('modal-root');
+  root.innerHTML = '';
+  var bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.onclick = function(e) { if (e.target === bg) closeModal(); };
+  var box = document.createElement('div');
+  box.className = 'modal-box';
+  box.style.maxWidth = (width || 520) + 'px';
+  var head = document.createElement('div');
+  head.className = 'modal-head';
+  head.innerHTML = '<h3>' + title + '</h3>';
+  var cl = document.createElement('button');
+  cl.className = 'modal-close';
+  cl.innerHTML = ic('close', 20, '#A08B76');
+  cl.onclick = closeModal;
+  head.appendChild(cl);
+  var body = document.createElement('div');
+  body.className = 'modal-body';
+  fn(body);
+  box.appendChild(head);
+  box.appendChild(body);
+  bg.appendChild(box);
+  root.appendChild(bg);
+}
+function closeModal() {
+  document.getElementById('modal-root').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+function goTo(v) {
+  S.view = v;
+  document.querySelectorAll('.nav-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.view === v);
+  });
+  // Auto-close sidebar when floating (not pinned)
+  if (SB.open && !SB.pinned) {
+    SB.open = false;
+    sbApply();
+  }
+  renderView();
+}
+
+function renderView() {
+  var m = document.getElementById('main');
+  m.innerHTML = '';
+  var views = {
+    dashboard: vDashboard,
+    tasks:     vTasks,
+    projects:  vProjects,
+    focus:     vFocus,
+    reminders: vReminders,
+    sleep:     vSleep,
+    toolkit:   vToolkit,
+  };
+  var fn = views[S.view];
+  if (fn) m.appendChild(fn());
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADHD TIP MODAL
+// ═══════════════════════════════════════════════════════
+function showTip(key) {
+  var t = TIPS[key];
+  showModal(t.title, 520, function(body) {
+    var pill = d({display:'flex',alignItems:'center',marginBottom:'16px'});
+    pill.innerHTML = '<span class="badge" style="color:'+t.color+';background:'+t.bg+';padding:4px 14px">📚 Evidence-based strategies</span>';
+    body.appendChild(pill);
+    t.tips.forEach(function(tip, i) {
+      var item = d({padding:'12px 14px',borderRadius:'10px',background:'#FDF8F2',
+        border:'1px solid #E4D8C8',fontSize:'14px',lineHeight:'1.5',marginBottom:'8px',
+        animation:'slideIn .3s ease '+(i*.05)+'s both'});
+      item.textContent = tip;
+      body.appendChild(item);
+    });
+    body.appendChild(p({marginTop:'16px',fontSize:'12px',color:'#A08B76',fontStyle:'italic'}, 'Source: ' + t.source));
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  AI BREAKDOWN
+// ═══════════════════════════════════════════════════════
+function showAI(task) {
+  showModal('🤖 AI Task Breakdown', 540, function(body) {
+    var tl = d({padding:'10px 14px',borderRadius:'10px',background:'#FAEADE',
+      marginBottom:'16px',fontSize:'14px',color:'#9E5636',fontWeight:'500'});
+    tl.textContent = '📋 ' + task.title;
+    body.appendChild(tl);
+
+    var note = d({padding:'12px',borderRadius:'10px',background:'#FBF2DC',
+      border:'1px solid rgba(200,144,48,.4)',fontSize:'13px',color:'#6B5240',
+      marginBottom:'12px',lineHeight:'1.6'});
+    note.textContent = '🔑 Enter your Anthropic API key to generate steps. Never stored — used only for this request.';
+    body.appendChild(note);
+
+    var ki = document.createElement('input');
+    ki.type = 'password';
+    ki.placeholder = 'sk-ant-... (Anthropic API key)';
+    ki.style.cssText = 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid #E4D8C8;background:#FDF8F2;font-family:DM Sans,sans-serif;font-size:14px;color:#2E1F0F;outline:none;margin-bottom:12px';
+    body.appendChild(ki);
+
+    var res = d({marginTop:'4px'});
+    body.appendChild(res);
+
+    var genBtn = btn(ic('star',16,'#fff') + ' ✨ Generate Steps', 'btn-primary', function() {
+      var key = ki.value.trim();
+      if (!key) { alert('Please enter your Anthropic API key.'); return; }
+      genBtn.disabled = true;
+      genBtn.textContent = 'Generating...';
+      res.innerHTML = '<div style="text-align:center;padding:24px"><div style="width:32px;height:32px;border:3px solid #FAEADE;border-top-color:#C4714A;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px"></div><p style="color:#A08B76;font-size:14px">Breaking it down...</p></div>';
+      fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+        body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
+          messages:[{role:'user',content:'You are an ADHD coach. Break this task into 4-6 small, concrete, ADHD-friendly steps. Each step starts with a verb, takes ≤10 minutes, uses plain language. Task: "'+task.title+'". Respond ONLY with a JSON array of strings.'}]})
+      }).then(function(r){return r.json();}).then(function(data) {
+        var steps = JSON.parse((data.content[0].text||'[]').replace(/```json|```/g,'').trim());
+        res.innerHTML = '';
+        steps.forEach(function(step, i) {
+          var row2 = d({display:'flex',alignItems:'flex-start',gap:'10px',padding:'10px 12px',
+            borderRadius:'8px',background:'#FDF8F2',border:'1px solid #E4D8C8',marginBottom:'8px'});
+          row2.innerHTML = '<span style="min-width:20px;height:20px;border-radius:6px;background:#FAEADE;color:#C4714A;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">'+(i+1)+'</span><span style="font-size:13px;color:#6B5240">'+step+'</span>';
+          res.appendChild(row2);
+        });
+        var br = d({display:'flex',gap:'8px',marginTop:'8px'});
+        br.appendChild(btn('✅ Add to Task', 'btn-primary btn-sm', function() {
+          steps.forEach(function(s) { task.subtasks.push({id:Date.now()+Math.random(),title:s,done:false}); });
+          closeModal(); S.expandedTask = task.id; renderView();
+        }));
+        br.appendChild(btn('Try Again', 'btn-secondary btn-sm', function() {
+          res.innerHTML = ''; genBtn.disabled = false;
+          genBtn.innerHTML = ic('star',16,'#fff') + ' ✨ Generate Steps';
+        }));
+        res.appendChild(br);
+      }).catch(function(e) {
+        res.innerHTML = '<p style="color:#C45A7A;font-size:14px">Error: '+e.message+'</p>';
+        genBtn.disabled = false;
+        genBtn.innerHTML = ic('star',16,'#fff') + ' ✨ Generate Steps';
+      });
+    });
+    body.appendChild(genBtn);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: DASHBOARD
+// ═══════════════════════════════════════════════════════
+function vDashboard() {
+  var today = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  var pending = S.tasks.filter(function(t){return !t.done;});
+  var doneN   = S.tasks.filter(function(t){return t.done;}).length;
+  var sec = section();
+
+  // Header
+  var hdr = d();
+  hdr.innerHTML = '<p style="font-size:13px;color:#A08B76;margin-bottom:4px">'+today+'</p>'
+    + '<h1 style="font-family:Lora,Georgia,serif;font-size:28px;font-weight:700">Good morning ✨</h1>'
+    + '<p style="color:#6B5240;margin-top:6px;font-size:15px">Let\'s make today manageable — one step at a time.</p>';
+  sec.appendChild(hdr);
+
+  // Energy check-in
+  var eCard = card({padding:'20px'});
+  eCard.appendChild(hx('h2',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'14px',color:'#2E1F0F'},'How\'s your energy right now?'));
+  var eRow = row();
+  [{id:'low',emoji:'🔋',label:'Low',color:'#C45A7A',bg:'#FAEAF0'},
+   {id:'medium',emoji:'⚡',label:'Medium',color:'#C89030',bg:'#FBF2DC'},
+   {id:'high',emoji:'🚀',label:'High',color:'#4E8B6A',bg:'#E0F0E8'}].forEach(function(e) {
+    var act = S.energy === e.id;
+    var b = document.createElement('button');
+    b.style.cssText = 'flex:1;padding:12px 8px;border-radius:12px;border:2px solid '+(act?e.color:'#E4D8C8')+';background:'+(act?e.bg:'#FDF8F2')+';cursor:pointer;text-align:center;font-family:DM Sans,sans-serif;transition:all .18s';
+    b.innerHTML = '<div style="font-size:22px">'+e.emoji+'</div><div style="font-size:13px;font-weight:600;color:'+(act?e.color:'#6B5240')+';margin-top:4px">'+e.label+'</div>';
+    b.onclick = function() { S.energy = e.id; renderView(); };
+    eRow.appendChild(b);
+  });
+  eCard.appendChild(eRow);
+  if (S.energy) {
+    var msgs = {low:'💙 Low energy day — prioritise your most essential task only. Be kind to yourself.',medium:'🌤️ Medium energy — pick 2-3 tasks max. Take breaks every 25 minutes.',high:'🌟 High energy — great time for your hardest task! Watch for hyperfocus.'};
+    var note = d({marginTop:'14px',padding:'10px 14px',borderRadius:'10px',background:'#FDF8F2',fontSize:'13px',color:'#6B5240'});
+    note.textContent = msgs[S.energy];
+    eCard.appendChild(note);
+  }
+  sec.appendChild(eCard);
+
+  // 2-col grid
+  var g = grid2();
+
+  // Today's Focus
+  var fCard = card({padding:'20px'});
+  var fh = row('space-between'); fh.style.marginBottom = '14px';
+  fh.appendChild(hx('h2',{fontFamily:'Lora,Georgia,serif',fontSize:'16px'},'Today\'s Focus'));
+  fh.appendChild(badge(doneN+' done','#4E8B6A','#E0F0E8'));
+  fCard.appendChild(fh);
+  var top3 = pending.slice(0,3);
+  if (!top3.length) {
+    fCard.appendChild(p({color:'#A08B76',fontSize:'14px'},'No tasks yet — add some in Tasks!'));
+  } else {
+    top3.forEach(function(task, i) {
+      var r = d({display:'flex',alignItems:'center',gap:'10px',padding:'8px 10px',
+        borderRadius:'8px',background:i===0?'#FAEADE':'#FDF8F2',
+        border:'1px solid '+(i===0?'#FAEADE':'#E4D8C8'),marginBottom:'8px',
+        animation:'slideIn .3s ease '+(i*.08)+'s both'});
+      r.innerHTML = '<div style="width:8px;height:8px;border-radius:50%;background:'+(i===0?'#C4714A':'#E4D8C8')+';flex-shrink:0"></div>'
+        + '<span style="font-size:13px;color:'+(i===0?'#9E5636':'#6B5240')+';font-weight:'+(i===0?500:400)+'">'+task.title+'</span>';
+      fCard.appendChild(r);
+    });
+  }
+  g.appendChild(fCard);
+
+  // Streak
+  var sCard = card({padding:'20px'});
+  sCard.appendChild(hx('h2',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'14px'},'Your Streak'));
+  [{label:'Tasks completed',val:doneN,color:'#4E8B6A'},{label:'Focus sessions',val:3,color:'#7065A8'},{label:'Day streak',val:5,color:'#C89030'}].forEach(function(s) {
+    var r = d({display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'});
+    r.innerHTML = '<span style="font-size:13px;color:#6B5240">'+s.label+'</span>'
+      + '<span style="font-family:Lora,Georgia,serif;font-weight:700;font-size:18px;color:'+s.color+'">'+s.val+'</span>';
+    sCard.appendChild(r);
+  });
+  g.appendChild(sCard);
+  sec.appendChild(g);
+
+  // Quick Capture
+  var cCard = card({padding:'20px'});
+  var ch = row('space-between'); ch.style.marginBottom = '14px';
+  var chl = d();
+  chl.innerHTML = '<h2 style="font-family:Lora,Georgia,serif;font-size:16px">Quick Capture</h2><p style="font-size:12px;color:#A08B76;margin-top:2px">Dump thoughts here. Process later.</p>';
+  ch.appendChild(chl);
+  ch.appendChild(btn(ic('plus',13,'#fff')+' Capture','btn-primary btn-sm',function(){S.showCapture=!S.showCapture;renderView();}));
+  cCard.appendChild(ch);
+  if (S.showCapture) {
+    var cf = d({marginBottom:'14px',animation:'fadeUp .2s ease'});
+    var ct = ta('What\'s in your head right now?');
+    cf.appendChild(ct);
+    var cr = d({display:'flex',gap:'8px',marginTop:'8px'});
+    cr.appendChild(btn('Save','btn-primary btn-sm',function(){if(ct.value.trim()){S.captures.unshift({id:Date.now(),text:ct.value.trim()});S.showCapture=false;renderView();}}));
+    cr.appendChild(btn('Cancel','btn-ghost btn-sm',function(){S.showCapture=false;renderView();}));
+    cf.appendChild(cr);
+    cCard.appendChild(cf);
+  }
+  S.captures.slice(0,3).forEach(function(c) {
+    var r = d({display:'flex',alignItems:'flex-start',gap:'10px',padding:'10px 12px',
+      borderRadius:'8px',background:'#FDF8F2',border:'1px solid #E4D8C8',marginBottom:'6px',fontSize:'13px'});
+    r.innerHTML = ic('capture',14,'#A08B76','margin-top:2px;flex-shrink:0')+'<span style="color:#6B5240;flex:1">'+c.text+'</span>';
+    cCard.appendChild(r);
+  });
+  sec.appendChild(cCard);
+  return sec;
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: TASKS
+// ═══════════════════════════════════════════════════════
+function vTasks() {
+  var pending = S.tasks.filter(function(t){return !t.done;});
+  var done    = S.tasks.filter(function(t){return t.done;});
+  var sec = section();
+
+  // Header
+  var hdr = row('space-between'); hdr.style.alignItems = 'flex-end';
+  var hl = d();
+  hl.innerHTML = '<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700">Tasks</h1>'
+    + '<p style="color:#A08B76;font-size:14px;margin-top:4px">'+pending.length+' pending · '+done.length+' completed</p>';
+  hdr.appendChild(hl);
+  hdr.appendChild(btn(ic('plus',16,'#fff')+' Add Task','btn-primary',function(){
+    showModal('New Task',520,function(body){
+      var ti = inp('What needs doing?'), di = inp('Due date (optional)'), nt = ta('Notes (optional)');
+      var br = d({display:'flex',gap:'8px',marginTop:'12px'});
+      br.appendChild(btn('Save Task','btn-primary',function(){
+        if(!ti.value.trim())return;
+        S.tasks.push({id:Date.now(),title:ti.value.trim(),notes:nt.value,dueDate:di.value,done:false,subtasks:[]});
+        closeModal(); renderView();
+      }));
+      br.appendChild(btn('Cancel','btn-ghost',closeModal));
+      body.appendChild(ti); body.appendChild(gap(8)); body.appendChild(di); body.appendChild(gap(8)); body.appendChild(nt); body.appendChild(br);
+    });
+  }));
+  sec.appendChild(hdr);
+
+  // Tip pills
+  var pills = d({display:'flex',gap:'8px',flexWrap:'wrap'});
+  Object.keys(TIPS).forEach(function(key) {
+    var b = document.createElement('button');
+    b.className = 'tip-pill';
+    b.innerHTML = ic('info',12,'#A08B76') + ' ' + TIPS[key].title;
+    b.onclick = function() { showTip(key); };
+    pills.appendChild(b);
+  });
+  sec.appendChild(pills);
+
+  // Task list
+  var list = d({display:'flex',flexDirection:'column',gap:'10px'});
+  if (!pending.length) {
+    var ec = card({padding:'20px'});
+    ec.innerHTML = '<p style="color:#A08B76;text-align:center;padding:20px 0">All caught up! 🎉 Add a task above.</p>';
+    list.appendChild(ec);
+  }
+  pending.forEach(function(task, i) {
+    var prog = task.subtasks.length ? Math.round(task.subtasks.filter(function(s){return s.done;}).length / task.subtasks.length * 100) : null;
+    var isExp = S.expandedTask === task.id;
+    var tc = card({overflow:'hidden',animation:'fadeUp .3s ease '+(i*.06)+'s both'});
+
+    var th = d({padding:'14px 16px'});
+    var trow = d({display:'flex',alignItems:'flex-start',gap:'12px'});
+
+    // Checkbox
+    var cb = document.createElement('button');
+    cb.className = 'cb';
+    cb.style.cssText = 'margin-top:1px;flex-shrink:0';
+    cb.onclick = function() { task.done = !task.done; renderView(); };
+    trow.appendChild(cb);
+
+    // Meta
+    var meta = d({flex:'1'});
+    var tr2 = d({display:'flex',alignItems:'center',gap:'8px'});
+    var ts = document.createElement('span');
+    ts.style.cssText = 'font-weight:500;font-size:15px;color:#2E1F0F';
+    ts.textContent = task.title;
+    tr2.appendChild(ts);
+    if (task.dueDate) tr2.appendChild(badge(task.dueDate,'#7065A8','#ECEAF8'));
+    meta.appendChild(tr2);
+    if (task.notes) meta.appendChild(p({fontSize:'13px',color:'#A08B76',marginTop:'4px'},task.notes));
+    if (prog !== null) {
+      var pb = d({marginTop:'8px',display:'flex',alignItems:'center',gap:'8px'});
+      var track = d({flex:'1',height:'4px',borderRadius:'2px',background:'#E4D8C8'});
+      var fill = d({height:'100%',borderRadius:'2px',background:prog===100?'#4E8B6A':'#C4714A',width:prog+'%',transition:'width .4s ease'});
+      track.appendChild(fill); pb.appendChild(track);
+      pb.appendChild(hx('span',{fontSize:'11px',color:'#A08B76'},prog+'%'));
+      meta.appendChild(pb);
+    }
+    trow.appendChild(meta);
+
+    // Actions
+    var acts = d({display:'flex',gap:'4px',flexShrink:'0'});
+    var aib = document.createElement('button');
+    aib.style.cssText = 'padding:4px 8px;border-radius:6px;border:1px solid #FAEADE;background:#FAEADE;color:#9E5636;font-size:11px;cursor:pointer;font-family:DM Sans,sans-serif;font-weight:600';
+    aib.textContent = '🤖 AI Break';
+    aib.onclick = function() { showAI(task); };
+    var exb = document.createElement('button');
+    exb.className = 'icon-btn';
+    exb.innerHTML = ic(isExp?'chevD':'chevR',14,'#A08B76');
+    exb.onclick = function() { S.expandedTask = isExp ? null : task.id; renderView(); };
+    var dlb = document.createElement('button');
+    dlb.className = 'icon-btn';
+    dlb.innerHTML = ic('trash',13,'#A08B76');
+    dlb.onclick = function() { S.tasks = S.tasks.filter(function(t){return t.id!==task.id;}); renderView(); };
+    acts.appendChild(aib); acts.appendChild(exb); acts.appendChild(dlb);
+    trow.appendChild(acts);
+    th.appendChild(trow);
+    tc.appendChild(th);
+
+    // Subtasks panel
+    if (isExp) {
+      var ss = d({borderTop:'1px solid #E4D8C8',padding:'12px 16px',background:'#FDF8F2'});
+      ss.appendChild(p({fontSize:'12px',color:'#A08B76',fontWeight:'600',letterSpacing:'.05em',textTransform:'uppercase',marginBottom:'10px'},'Subtasks'));
+      task.subtasks.forEach(function(sub) {
+        var si = d({display:'flex',alignItems:'center',gap:'10px',marginBottom:'8px',padding:'8px 10px',
+          borderRadius:'8px',background:sub.done?'#E0F0E8':'#fff',border:'1px solid '+(sub.done?'#E0F0E8':'#E4D8C8')});
+        var scb = document.createElement('button');
+        scb.className = 'cb cb-sm' + (sub.done?' on':'');
+        scb.onclick = function() { sub.done = !sub.done; renderView(); };
+        if (sub.done) scb.innerHTML = ic('check',10,'#fff');
+        var st = document.createElement('span');
+        st.style.cssText = 'font-size:13px;color:'+(sub.done?'#A08B76':'#2E1F0F')+';text-decoration:'+(sub.done?'line-through':'none')+';flex:1';
+        st.textContent = sub.title;
+        si.appendChild(scb); si.appendChild(st);
+        ss.appendChild(si);
+      });
+      var ar = d({display:'flex',gap:'8px',marginTop:'10px'});
+      var si2 = inp('Add a subtask...'); si2.style.fontSize = '13px';
+      ar.appendChild(si2);
+      ar.appendChild(btn('Add','btn-primary btn-sm',function(){
+        if(si2.value.trim()){task.subtasks.push({id:Date.now(),title:si2.value.trim(),done:false});renderView();}
+      }));
+      ss.appendChild(ar);
+      tc.appendChild(ss);
+    }
+    list.appendChild(tc);
+  });
+  sec.appendChild(list);
+
+  if (done.length) {
+    sec.appendChild(p({fontSize:'12px',color:'#A08B76',fontWeight:'600',letterSpacing:'.05em',textTransform:'uppercase',marginBottom:'10px',marginTop:'8px'},'Completed'));
+    done.forEach(function(task) {
+      var dr = d({display:'flex',alignItems:'center',gap:'10px',padding:'10px 14px',marginBottom:'6px',borderRadius:'10px',background:'#E0F0E8',opacity:'.7'});
+      dr.innerHTML = ic('check',14,'#4E8B6A')+'<span style="font-size:14px;color:#6B5240;text-decoration:line-through">'+task.title+'</span>';
+      sec.appendChild(dr);
+    });
+  }
+  return sec;
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: PROJECTS
+// ═══════════════════════════════════════════════════════
+function vProjects() {
+  var sec = section();
+  var hdr = row('space-between'); hdr.style.alignItems = 'flex-end';
+  var hl = d();
+  hl.innerHTML = '<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700">Projects</h1><p style="color:#A08B76;font-size:14px;margin-top:4px">Dedicated workspaces for big goals</p>';
+  hdr.appendChild(hl);
+  hdr.appendChild(btn(ic('plus',16,'#fff')+' New Project','btn-primary',function(){
+    showModal('New Project Workspace',520,function(body){
+      var er = row(); er.style.cssText += ';gap:8px;margin-bottom:8px';
+      var ei = inp('📁'); ei.style.cssText='max-width:60px;text-align:center;font-size:20px;width:60px;padding:10px 8px';
+      var ni = inp('Project name...'); ni.style.flex='1';
+      er.appendChild(ei); er.appendChild(ni);
+      var noti = inp('Quick note (optional)');
+      var br = d({display:'flex',gap:'8px',marginTop:'12px'});
+      br.appendChild(btn('Create','btn-primary',function(){
+        if(!ni.value.trim())return;
+        S.projects.push({id:Date.now(),name:ni.value.trim(),emoji:ei.value||'📁',color:'#C4714A',cLight:'#FAEADE',tasks:0,notes:noti.value});
+        closeModal(); renderView();
+      }));
+      br.appendChild(btn('Cancel','btn-ghost',closeModal));
+      body.appendChild(er); body.appendChild(noti); body.appendChild(br);
+    });
+  }));
+  sec.appendChild(hdr);
+
+  var grid = d({display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:'14px'});
+  S.projects.forEach(function(proj, i) {
+    var c = card({padding:'0',overflow:'hidden',cursor:'pointer',
+      animation:'fadeUp .3s ease '+(i*.08)+'s both',transition:'transform .2s,box-shadow .2s'});
+    c.onmouseenter = function(){c.style.transform='translateY(-2px)';c.style.boxShadow='0 8px 32px rgba(60,30,10,.12)';};
+    c.onmouseleave = function(){c.style.transform='';c.style.boxShadow='';};
+    var tb = d({height:'6px',background:proj.color});
+    var body2 = d({padding:'18px'});
+    body2.innerHTML = '<div style="font-size:28px;margin-bottom:8px">'+proj.emoji+'</div>'
+      + '<h3 style="font-family:Lora,Georgia,serif;font-size:17px;font-weight:600;color:#2E1F0F;margin-bottom:4px">'+proj.name+'</h3>'
+      + (proj.notes?'<p style="font-size:13px;color:#A08B76;margin-bottom:12px">'+proj.notes+'</p>':'');
+    var ft = row('space-between');
+    ft.appendChild(badge(proj.tasks+' tasks',proj.color,proj.cLight));
+    ft.innerHTML += ic('chevR',14,'#A08B76');
+    body2.appendChild(ft); c.appendChild(tb); c.appendChild(body2);
+    c.onclick = function(){showProjectDetail(proj);};
+    grid.appendChild(c);
+  });
+  sec.appendChild(grid);
+  return sec;
+}
+
+function showProjectDetail(proj) {
+  showModal(proj.emoji+' '+proj.name, 600, function(body) {
+    var sg = d({display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'16px'});
+    [{label:'Tasks',val:proj.tasks,color:'#C4714A'},{label:'Complete',val:Math.floor(proj.tasks*.4),color:'#4E8B6A'},{label:'Overdue',val:1,color:'#C45A7A'}].forEach(function(s){
+      var item = d({padding:'14px',borderRadius:'10px',background:'#FDF8F2',border:'1px solid #E4D8C8',textAlign:'center'});
+      item.innerHTML = '<div style="font-family:Lora,Georgia,serif;font-size:24px;font-weight:700;color:'+s.color+'">'+s.val+'</div><div style="font-size:12px;color:#A08B76;margin-top:2px">'+s.label+'</div>';
+      sg.appendChild(item);
+    });
+    body.appendChild(sg);
+    body.appendChild(p({fontSize:'12px',color:'#A08B76',fontWeight:'600',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:'8px'},'Project Notes'));
+    body.appendChild(ta('Add project notes...',proj.notes));
+    body.appendChild(p({fontSize:'12px',color:'#A08B76',fontWeight:'600',textTransform:'uppercase',letterSpacing:'.05em',margin:'16px 0 8px'},'Resources & Links'));
+    var rd = d({padding:'12px',borderRadius:'8px',background:'#FDF8F2',border:'1px solid #E4D8C8',fontSize:'13px',color:'#A08B76',textAlign:'center'});
+    rd.textContent = 'Drop links, docs, or files here';
+    body.appendChild(rd);
+    var br = d({display:'flex',gap:'8px',marginTop:'16px'});
+    br.appendChild(btn(ic('cal',16,'#fff')+' Sync to Calendar','btn-green btn-sm',function(){}));
+    br.appendChild(btn(ic('check',16,'#2E1F0F')+' View Tasks','btn-secondary btn-sm',function(){closeModal();goTo('tasks');}));
+    body.appendChild(br);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: FOCUS
+// ═══════════════════════════════════════════════════════
+function vFocus() {
+  var f = S.focus;
+  var TOTAL = (f.mode==='break' ? f.brk : f.dur) * 60;
+  var prog  = ((TOTAL - f.secs) / TOTAL) * 100;
+  var R = 80, circ = 2 * Math.PI * R, dash = circ - (prog/100)*circ;
+  var arcCol = f.mode==='break' ? '#4E8B6A' : '#C4714A';
+  var lbl    = f.mode==='break' ? '☕ Break time' : f.mode==='idle' ? 'Ready' : 'Focusing';
+  var mm = Math.floor(f.secs/60).toString().padStart(2,'0');
+  var ss = (f.secs%60).toString().padStart(2,'0');
+
+  var sec = section();
+  sec.appendChild(d({},
+    '<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700">Focus Mode</h1>'
+    +'<p style="color:#A08B76;font-size:14px;margin-top:4px">Pomodoro timer with sensory support</p>'
+  ));
+
+  var g = grid2();
+
+  // Timer card
+  var tc = card({padding:'32px',display:'flex',flexDirection:'column',alignItems:'center',gap:'24px'});
+  var sw = d({position:'relative',width:'200px',height:'200px'});
+  sw.innerHTML = '<svg id="farc-svg" width="200" height="200" style="transform:rotate(-90deg)" viewBox="0 0 200 200">'
+    + '<circle cx="100" cy="100" r="'+R+'" fill="none" stroke="#E4D8C8" stroke-width="10"/>'
+    + '<circle id="farc" cx="100" cy="100" r="'+R+'" fill="none" stroke="'+arcCol+'" stroke-width="10" stroke-linecap="round"'
+    + ' stroke-dasharray="'+circ.toFixed(2)+'" stroke-dashoffset="'+dash.toFixed(2)+'" style="transition:stroke-dashoffset .5s ease"/>'
+    + '</svg>'
+    + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">'
+    + '<div id="ftime" style="font-family:Lora,Georgia,serif;font-size:42px;font-weight:700;color:#2E1F0F;line-height:1">'+mm+':'+ss+'</div>'
+    + '<div id="flbl" style="font-size:12px;color:#A08B76;margin-top:4px;font-weight:500">'+lbl+'</div>'
+    + '</div>';
+  tc.appendChild(sw);
+
+  var br = row(); br.style.gap='10px';
+  if (f.mode==='idle'||f.mode==='paused') {
+    br.appendChild(btn(ic('play',16,'#fff')+(f.mode==='paused'?' Resume':' Start Focus'),'btn-primary',startFocus));
+  } else {
+    br.appendChild(btn(ic('pause',16,'#fff')+' Pause','btn-primary',pauseFocus));
+  }
+  br.appendChild(btn(ic('refresh',16,'#6B5240')+' Reset','btn-secondary',resetFocus));
+  tc.appendChild(br);
+
+  var mt = d({display:'flex',gap:'20px',fontSize:'13px',color:'#A08B76'});
+  mt.innerHTML = '<div>🎯 Sessions: <strong style="color:#2E1F0F">'+f.cycle+'</strong></div><div>⏱️ Duration: <strong style="color:#2E1F0F">'+f.dur+'m</strong></div>';
+  tc.appendChild(mt);
+  g.appendChild(tc);
+
+  // Settings col
+  var col = d({display:'flex',flexDirection:'column',gap:'12px'});
+
+  var dc = card({padding:'20px'});
+  dc.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'15px',marginBottom:'14px'},'Timer Settings'));
+  [{label:'Focus duration',val:f.dur,opts:[15,20,25,30,45],fn:function(v){f.dur=v;if(f.mode==='idle')f.secs=v*60;renderView();}},
+   {label:'Break duration',val:f.brk,opts:[5,10,15],fn:function(v){f.brk=v;renderView();}}].forEach(function(s) {
+    var g2 = d({marginBottom:'12px'});
+    g2.appendChild(p({fontSize:'12px',color:'#A08B76',marginBottom:'6px'},s.label));
+    var r = d({display:'flex',gap:'6px',flexWrap:'wrap'});
+    s.opts.forEach(function(o) {
+      var act = s.val===o;
+      var b = document.createElement('button');
+      b.style.cssText = 'padding:5px 12px;border-radius:8px;border:1px solid '+(act?'#C4714A':'#E4D8C8')+';background:'+(act?'#FAEADE':'#FDF8F2')+';color:'+(act?'#9E5636':'#6B5240')+';font-size:13px;cursor:pointer;font-family:DM Sans,sans-serif;font-weight:'+(act?'600':'400');
+      b.textContent = o+'m';
+      b.onclick = function(){s.fn(o);};
+      r.appendChild(b);
+    });
+    g2.appendChild(r); dc.appendChild(g2);
+  });
+  col.appendChild(dc);
+
+  var sc = card({padding:'20px'});
+  sc.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'15px',marginBottom:'14px'},'🎧 Soundscape'));
+  [{id:'none',label:'Silence',emoji:'🔇'},{id:'rain',label:'Rain',emoji:'🌧️'},{id:'cafe',label:'Café',emoji:'☕'},{id:'nature',label:'Nature',emoji:'🌿'},{id:'brown',label:'Brown Noise',emoji:'🎵'}].forEach(function(s) {
+    var act = f.sound===s.id;
+    var b = document.createElement('button');
+    b.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid '+(act?'#C4714A':'#E4D8C8')+';background:'+(act?'#FAEADE':'#FDF8F2')+';cursor:pointer;font-family:DM Sans,sans-serif;font-size:13px;color:'+(act?'#9E5636':'#6B5240')+';text-align:left;width:100%;margin-bottom:6px';
+    b.innerHTML = '<span>'+s.emoji+'</span>'+s.label+(act?ic('check',14,'#4E8B6A','margin-left:auto'):'');
+    b.onclick = function(){f.sound=s.id;renderView();};
+    sc.appendChild(b);
+  });
+  col.appendChild(sc);
+
+  var hf = card({padding:'16px',background:'#ECEAF8',border:'1px solid rgba(112,101,168,.2)'});
+  hf.innerHTML = '<p style="font-size:13px;color:#7065A8;line-height:1.6"><strong>⚠️ Hyperfocus alert:</strong> If you\'ve started a new timer 3+ times without a break, step away for 5 minutes.</p>';
+  col.appendChild(hf);
+  g.appendChild(col);
+  sec.appendChild(g);
+  return sec;
+}
+
+function startFocus() {
+  var f = S.focus; f.mode = 'running';
+  if (S.timerIv) clearInterval(S.timerIv);
+  S.timerIv = setInterval(function() {
+    f.secs--;
+    if (f.secs <= 0) {
+      clearInterval(S.timerIv);
+      if (f.mode === 'running') { f.cycle++; f.mode='break'; f.secs=f.brk*60; }
+      else { f.mode='idle'; f.secs=f.dur*60; }
+      renderView(); return;
+    }
+    var ft = document.getElementById('ftime');
+    if (ft) ft.textContent = Math.floor(f.secs/60).toString().padStart(2,'0')+':'+(f.secs%60).toString().padStart(2,'0');
+    var arc = document.getElementById('farc');
+    if (arc) { var T=(f.mode==='break'?f.brk:f.dur)*60,R=80,ci=2*Math.PI*R; arc.setAttribute('stroke-dashoffset', String(ci-((T-f.secs)/T)*ci)); }
+  }, 1000);
+  renderView();
+}
+function pauseFocus() { S.focus.mode='paused'; clearInterval(S.timerIv); renderView(); }
+function resetFocus() { S.focus.mode='idle'; clearInterval(S.timerIv); S.focus.secs=S.focus.dur*60; renderView(); }
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: REMINDERS
+// ═══════════════════════════════════════════════════════
+function vReminders() {
+  var sec = section();
+  var aC  = S.reminders.filter(function(r){return r.active;}).length;
+  var hdr = row('space-between'); hdr.style.alignItems='flex-end';
+  var hl  = d();
+  hl.innerHTML = '<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700">Reminders</h1><p style="color:#A08B76;font-size:14px;margin-top:4px">'+aC+' active reminders</p>';
+  hdr.appendChild(hl);
+  hdr.appendChild(btn(ic('plus',16,'#fff')+' Add Reminder','btn-primary',function(){
+    showModal('New Reminder',520,function(body){
+      var er = row(); er.style.cssText += ';gap:8px;margin-bottom:8px';
+      var ei = inp('⏰'); ei.style.cssText='max-width:60px;text-align:center;font-size:20px;width:60px;padding:10px 8px';
+      var li = inp('Reminder name...'); li.style.flex='1';
+      er.appendChild(ei); er.appendChild(li);
+      var tr = row(); tr.style.cssText+=';gap:8px;margin-bottom:8px';
+      var ti = inp('Time (e.g. 08:00)'); ti.style.flex='1';
+      var sel = document.createElement('select');
+      sel.style.cssText='flex:1;padding:10px 12px;border-radius:10px;border:1px solid #E4D8C8;background:#FDF8F2;font-family:DM Sans,sans-serif;font-size:14px;color:#2E1F0F';
+      ['Once','Daily','Weekdays','Weekends','Weekly'].forEach(function(r){var o=document.createElement('option');o.textContent=r;sel.appendChild(o);});
+      tr.appendChild(ti); tr.appendChild(sel);
+      var br = d({display:'flex',gap:'8px'});
+      br.appendChild(btn('Save','btn-primary',function(){
+        if(!li.value.trim()||!ti.value.trim())return;
+        S.reminders.push({id:Date.now(),emoji:ei.value||'⏰',label:li.value.trim(),time:ti.value.trim(),repeat:sel.value,active:true});
+        closeModal(); renderView();
+      }));
+      br.appendChild(btn('Cancel','btn-ghost',closeModal));
+      body.appendChild(er); body.appendChild(tr); body.appendChild(br);
+    });
+  }));
+  sec.appendChild(hdr);
+
+  var list = d({display:'flex',flexDirection:'column',gap:'10px'});
+  S.reminders.forEach(function(r, i) {
+    var c = card({padding:'14px 18px',opacity:r.active?'1':'.6',animation:'fadeUp .3s ease '+(i*.05)+'s both'});
+    var rrow = row();
+    var icon = d({width:'44px',height:'44px',borderRadius:'12px',background:r.active?'#FAEADE':'#F2EBE0',
+      display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px',flexShrink:'0'});
+    icon.textContent = r.emoji;
+    var info = d({flex:'1',marginLeft:'14px'});
+    info.innerHTML = '<div style="font-weight:500;font-size:15px;color:#2E1F0F">'+r.label+'</div>'
+      + '<div style="font-size:13px;color:#A08B76;margin-top:2px">⏰ '+r.time+' · 🔁 '+r.repeat+'</div>';
+    var ctrl = row(); ctrl.style.gap='10px';
+    ctrl.appendChild(badge(r.active?'Active':'Off',r.active?'#4E8B6A':'#A08B76',r.active?'#E0F0E8':'#F2EBE0'));
+    ctrl.appendChild(tog(r.active,function(){r.active=!r.active;renderView();}));
+    rrow.appendChild(icon); rrow.appendChild(info); rrow.appendChild(ctrl);
+    c.appendChild(rrow); list.appendChild(c);
+  });
+  sec.appendChild(list);
+
+  var nc = card({padding:'20px',background:'#FBF2DC',border:'1px solid rgba(200,144,48,.2)'});
+  nc.innerHTML = '<h3 style="font-family:Lora,Georgia,serif;font-size:15px;color:#C89030;margin-bottom:8px">📱 Notification Channels</h3>'
+    + '<p style="font-size:13px;color:#6B5240;margin-bottom:12px">Choose how you want to receive reminders.</p>'
+    + '<div style="display:flex;gap:16px">'
+    + ['Push notification','Email','SMS'].map(function(ch,i){return '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#6B5240"><input type="checkbox" '+(i===0?'checked':'')+' style="accent-color:#C4714A">'+ch+'</label>';}).join('')
+    + '</div>';
+  sec.appendChild(nc);
+  return sec;
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: SLEEP
+// ═══════════════════════════════════════════════════════
+function sleepDur(bed, wake) {
+  var bH=+bed.split(':')[0], bM=+bed.split(':')[1];
+  var wH=+wake.split(':')[0], wM=+wake.split(':')[1];
+  var m = (wH*60+wM)-(bH*60+bM);
+  if (m<0) m+=1440;
+  return Math.floor(m/60)+'h '+(m%60)+'m';
+}
+function vSleep() {
+  var sl = S.sleep;
+  var sec = section();
+  sec.appendChild(d({},'<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700">Sleep Routine</h1><p style="color:#A08B76;font-size:14px;margin-top:4px">ADHD often disrupts sleep — build a consistent routine</p>'));
+
+  var g = grid2();
+
+  // Schedule
+  var sched = card({padding:'20px'});
+  sched.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'16px'},'🌙 Sleep Schedule'));
+  [{label:'Bedtime',key:'bed'},{label:'Wake time',key:'wake'}].forEach(function(f) {
+    var g2 = d({marginBottom:'12px'});
+    g2.appendChild(p({fontSize:'12px',color:'#A08B76',marginBottom:'4px'},f.label));
+    var inp2 = document.createElement('input');
+    inp2.type = 'time'; inp2.value = sl[f.key];
+    inp2.addEventListener('change',function(e){sl[f.key]=e.target.value;renderView();});
+    g2.appendChild(inp2); sched.appendChild(g2);
+  });
+  var db = d({padding:'12px 14px',borderRadius:'10px',background:'#ECEAF8',display:'flex',alignItems:'center',justifyContent:'space-between'});
+  db.innerHTML = '<span style="font-size:13px;color:#7065A8">Total sleep</span><span style="font-family:Lora,Georgia,serif;font-size:18px;font-weight:700;color:#7065A8">'+sleepDur(sl.bed,sl.wake)+'</span>';
+  sched.appendChild(db);
+  g.appendChild(sched);
+
+  // Wind-down
+  var wind = card({padding:'20px'});
+  wind.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'8px'},'😴 Wind-down'));
+  wind.appendChild(p({fontSize:'13px',color:'#A08B76',marginBottom:'14px'},'Get ready for bed notification'));
+  ['60 mins before','30 mins before','15 mins before'].forEach(function(opt, i) {
+    var act = sl.wind===i;
+    var b = document.createElement('button');
+    b.style.cssText = 'padding:10px 14px;border-radius:8px;border:1px solid '+(act?'#7065A8':'#E4D8C8')+';background:'+(act?'#ECEAF8':'#FDF8F2')+';color:'+(act?'#7065A8':'#6B5240')+';cursor:pointer;font-family:DM Sans,sans-serif;font-size:13px;text-align:left;width:100%;margin-bottom:8px';
+    b.textContent = '🔔 '+opt;
+    b.onclick = function(){sl.wind=i;renderView();};
+    wind.appendChild(b);
+  });
+  g.appendChild(wind);
+  sec.appendChild(g);
+
+  // Strategies
+  var strat = card({padding:'20px'});
+  strat.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'6px'},'ADHD Sleep Strategies'));
+  strat.appendChild(p({fontSize:'13px',color:'#A08B76',marginBottom:'14px'},'Toggle on the strategies that work for you (ADHD UK & Sleep Foundation guidance)'));
+  sl.strat.forEach(function(s) {
+    var r = d({display:'flex',alignItems:'center',gap:'12px',padding:'12px 14px',borderRadius:'10px',
+      background:s.on?'#ECEAF8':'#FDF8F2',border:'1px solid '+(s.on?'rgba(112,101,168,.3)':'#E4D8C8'),marginBottom:'8px'});
+    var lbl = document.createElement('span');
+    lbl.style.cssText='flex:1;font-size:14px;color:'+(s.on?'#7065A8':'#6B5240');
+    lbl.textContent = s.label;
+    var t = tog(s.on,function(){s.on=!s.on;renderView();},'#7065A8');
+    r.appendChild(lbl); r.appendChild(t);
+    strat.appendChild(r);
+  });
+  sec.appendChild(strat);
+
+  // Morning checklist
+  var cl = card({padding:'20px'});
+  cl.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'6px'},'☀️ Morning Prep Checklist'));
+  cl.appendChild(p({fontSize:'13px',color:'#A08B76',marginBottom:'14px'},'Externalise your morning routine'));
+  var cg = d({display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'});
+  sl.list.forEach(function(item) {
+    var b = document.createElement('button');
+    b.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:1px solid '+(item.done?'#4E8B6A':'#E4D8C8')+';background:'+(item.done?'#E0F0E8':'#FDF8F2')+';cursor:pointer;font-family:DM Sans,sans-serif;font-size:13px;text-align:left;color:'+(item.done?'#4E8B6A':'#6B5240');
+    var cb = document.createElement('div');
+    cb.className='cb cb-sm'+(item.done?' on':'');
+    cb.style.flexShrink='0';
+    if(item.done)cb.innerHTML=ic('check',10,'#fff');
+    b.appendChild(cb);
+    b.appendChild(document.createTextNode(item.label));
+    b.onclick=function(){item.done=!item.done;renderView();};
+    cg.appendChild(b);
+  });
+  cl.appendChild(cg);
+  sec.appendChild(cl);
+  return sec;
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW: TOOLKIT
+// ═══════════════════════════════════════════════════════
+function vToolkit() {
+  var sec = section();
+  sec.appendChild(d({},'<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700">Emotional Toolkit</h1><p style="color:#A08B76;font-size:14px;margin-top:4px">Non-clinical self-regulation tools for ADHD</p>'));
+
+  var warn = card({padding:'16px',background:'#FBF2DC',border:'1px solid rgba(200,144,48,.2)'});
+  warn.innerHTML = '<p style="font-size:13px;color:#6B5240;line-height:1.6">⚠️ These tools support self-regulation but are not a substitute for professional support. If you\'re struggling, please speak with your GP or an ADHD-specialist therapist.</p>';
+  sec.appendChild(warn);
+
+  var tools = [
+    {id:'box',  emoji:'🫁',title:'Box Breathing',       desc:'4s in → 4s hold → 4s out → 4s hold. Reduces acute stress response.',           color:'#7065A8',bg:'#ECEAF8'},
+    {id:'54321',emoji:'👁️',title:'5-4-3-2-1 Grounding',desc:'5 things you see, 4 hear, 3 touch, 2 smell, 1 taste.',                        color:'#4E8B6A',bg:'#E0F0E8'},
+    {id:'dump', emoji:'📝',title:'Brain Dump',           desc:'Write everything in your head for 5 minutes. Then close the notebook.',          color:'#C89030',bg:'#FBF2DC'},
+    {id:'move', emoji:'🏃',title:'Movement Break',       desc:'2 minutes of movement resets dopamine and improves focus.',                     color:'#C4714A',bg:'#FAEADE'},
+    {id:'body', emoji:'👥',title:'Body Double',          desc:'Work with someone present — reduces task avoidance.',                           color:'#7065A8',bg:'#ECEAF8'},
+    {id:'cold', emoji:'🚿',title:'Cold Splash',          desc:'Splash cold water on your face — activates the dive reflex, calms the system.', color:'#4AA8C4',bg:'#E4F4FA'},
+  ];
+
+  var grid = d({display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'14px'});
+  tools.forEach(function(tool, i) {
+    var c = card({padding:'20px',cursor:'pointer',animation:'fadeUp .3s ease '+(i*.07)+'s both',transition:'transform .15s'});
+    c.onmouseenter = function(){c.style.transform='translateY(-2px)';};
+    c.onmouseleave = function(){c.style.transform='';};
+    c.innerHTML = '<div style="font-size:28px;margin-bottom:10px">'+tool.emoji+'</div>'
+      + '<h3 style="font-family:Lora,Georgia,serif;font-size:15px;font-weight:600;margin-bottom:6px">'+tool.title+'</h3>'
+      + '<p style="font-size:13px;color:#A08B76;line-height:1.5">'+tool.desc+'</p>';
+    if (tool.id==='box') {
+      var sb = btn('Start Breathing','btn-primary btn-sm',function(e){e.stopPropagation();doBreathing(c,sb);});
+      sb.style.marginTop = '12px';
+      c.appendChild(sb);
+    }
+    grid.appendChild(c);
+  });
+  sec.appendChild(grid);
+
+  // Progress chart
+  var cc = card({padding:'20px'});
+  cc.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'16px'},'📊 This Week\'s Progress'));
+  var chart = d({display:'flex',gap:'8px',alignItems:'flex-end',height:'80px'});
+  [60,80,45,90,70,30,55].forEach(function(v,i){
+    var w = d({flex:'1',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'});
+    var bar = d({width:'100%',height:v*.7+'%',borderRadius:'4px 4px 0 0',
+      background:i===3?'#4E8B6A':i<5?'#C4714A':'#E4D8C8',
+      animation:'fadeUp .4s ease '+(i*.08)+'s both'});
+    var lbl2 = document.createElement('span');
+    lbl2.style.cssText='font-size:11px;color:#A08B76';
+    lbl2.textContent='MTWTFSS'[i];
+    w.appendChild(bar); w.appendChild(lbl2); chart.appendChild(w);
+  });
+  cc.appendChild(chart);
+  cc.appendChild(p({fontSize:'12px',color:'#A08B76',marginTop:'10px'},'Tasks completed · Best day: Thursday'));
+  sec.appendChild(cc);
+  return sec;
+}
+
+function doBreathing(card2, startBtn) {
+  if (S.breathIv) clearInterval(S.breathIv);
+  startBtn.remove();
+  var phases = ['Breathe In','Hold','Breathe Out','Hold']; var idx=0;
+  var circle = d({width:'80px',height:'80px',borderRadius:'50%',background:'#ECEAF8',
+    border:'3px solid #7065A8',display:'flex',alignItems:'center',justifyContent:'center',
+    margin:'12px auto 8px',fontSize:'11px',fontWeight:'700',color:'#7065A8',
+    textTransform:'uppercase',transition:'transform 4s ease'});
+  circle.textContent = phases[0];
+  var stopBtn = btn('Stop','btn-secondary btn-sm',function(){
+    clearInterval(S.breathIv); S.breathIv=null;
+    circle.remove(); stopBtn.remove();
+    var nb=btn('Start Breathing','btn-primary btn-sm',function(e){e.stopPropagation();doBreathing(card2,nb);});
+    nb.style.marginTop='12px'; card2.appendChild(nb);
+  });
+  stopBtn.style.cssText='display:block;margin:4px auto 0';
+  card2.appendChild(circle); card2.appendChild(stopBtn);
+  S.breathIv = setInterval(function(){
+    idx=(idx+1)%4; circle.textContent=phases[idx];
+    circle.style.transform=(idx===0||idx===2)?'scale(1.25)':'scale(1)';
+  },4000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  // Sidebar initial state
+  if (window.innerWidth < 700) {
+    SB.open   = false;
+    SB.pinned = false;
+  }
+  sbApply();
+  renderView();
+});
 </script>
+
 </body>
 </html>
-:::
