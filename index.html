@@ -19,6 +19,7 @@ header{flex-shrink:0;z-index:10;background:linear-gradient(135deg,var(--sky),var
 .hright{display:flex;align-items:center;gap:8px;}
 .sc{font-size:1.15rem;font-weight:900;color:#fff;}
 .mute-btn{background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.5);border-radius:50px;padding:5px 11px;font-size:1rem;cursor:pointer;color:#fff;font-weight:800;transition:all 0.2s;}
+.mute-btn.icon-only{padding:5px 9px;}
 .level-bar{position:relative;flex-shrink:0;z-index:10;display:flex;align-items:center;gap:5px;padding:6px 10px;background:rgba(255,255,255,0.92);border-bottom:2px solid rgba(0,0,0,0.06);overflow-x:auto;scrollbar-width:none;}
 .level-bar::-webkit-scrollbar{display:none;}
 .level-bar::after{content:'\203A';position:absolute;top:0;right:0;bottom:2px;width:30px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-size:1.1rem;font-weight:900;color:#bbb;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.95) 55%);pointer-events:none;}
@@ -212,6 +213,19 @@ body.symbols-only .pc .em,body.symbols-only .sch .ce,body.symbols-only .acard .a
 .break-card{background:#fff;border-radius:20px;padding:28px 24px;text-align:center;max-width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.3);animation:pin .35s var(--b);}
 .break-title{font-family:'Baloo 2',cursive;font-size:1.3rem;font-weight:800;margin:10px 0 6px;color:#333;}
 .break-sub{font-size:0.9rem;color:#777;font-weight:600;margin-bottom:18px;}
+/* VOICE PICKER */
+.voice-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;align-items:center;justify-content:center;padding:20px;}
+.voice-overlay.show{display:flex;}
+.voice-card{background:#fff;border-radius:20px;padding:20px;max-width:360px;width:100%;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.3);animation:pin .35s var(--b);}
+.voice-card h3{font-family:'Baloo 2',cursive;font-size:1.15rem;margin-bottom:3px;color:#333;}
+.voice-hint{font-size:0.78rem;color:#888;font-weight:600;margin-bottom:12px;}
+.voice-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;margin-bottom:14px;-webkit-overflow-scrolling:touch;}
+.voice-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:2px solid #eee;border-radius:12px;cursor:pointer;transition:all .15s;}
+.voice-row:hover{border-color:var(--sky);}
+.voice-row.sel{border-color:var(--grass);background:#f2fff3;}
+.vr-name{font-size:0.85rem;font-weight:800;color:#333;}
+.vr-tag{font-size:0.7rem;color:#999;font-weight:700;}
+.vr-play{flex-shrink:0;background:var(--sky);color:#fff;border:none;border-radius:50%;width:38px;height:38px;min-width:38px;font-size:0.9rem;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -221,6 +235,7 @@ body.symbols-only .pc .em,body.symbols-only .sch .ce,body.symbols-only .acard .a
   <div class="hright">
     <span style="font-size:1.3rem;">⭐</span><span class="sc" id="sc">0</span>
     <button class="mute-btn" id="symBtn" onclick="toggleSymbols()">🖼️ Symbols</button>
+    <button class="mute-btn icon-only" id="voiceBtn" onclick="openVoicePicker()" title="Choose voice">🎤</button>
     <button class="mute-btn" id="muteBtn" onclick="toggleMute()">🔊 On</button>
   </div>
 </header>
@@ -411,16 +426,43 @@ body.symbols-only .pc .em,body.symbols-only .sch .ce,body.symbols-only .acard .a
     <button class="bb sun" onclick="dismissBreak()">😊 Keep Playing</button>
   </div>
 </div>
+<div class="voice-overlay" id="voiceOverlay">
+  <div class="voice-card">
+    <h3>🎤 Choose a Voice</h3>
+    <div class="voice-hint">Tap ▶️ to hear one, tap a row to use it.</div>
+    <div class="voice-list" id="voiceList"></div>
+    <button class="bb sun" onclick="closeVoicePicker()">✅ Done</button>
+  </div>
+</div>
 <script>
 // ═══ GLOBALS ═══
-let stars=0,lv=1,speechOn=true,sessionStars=0;
+let stars=0,lv=1,speechOn=true,sessionStars=0,selectedVoiceURI=null;
 const BREAK_THRESHOLD=25;
 const LS_KEY='talktime_state_v1';
 function saveState(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify({stars,lv,speechOn,symbolsOnly:document.body.classList.contains('symbols-only')}));}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify({stars,lv,speechOn,selectedVoiceURI,symbolsOnly:document.body.classList.contains('symbols-only')}));}catch(e){}
 }
 function loadState(){
   try{const raw=localStorage.getItem(LS_KEY);return raw?JSON.parse(raw):null;}catch(e){return null;}
+}
+// Browser TTS voice quality varies wildly by platform. Score installed voices so we
+// default to the most natural-sounding one instead of whichever the OS lists first,
+// and let a parent override the pick from the voice picker (see openVoicePicker).
+const VOICE_QUALITY_HINT=/natural|enhanced|premium|neural|online/i;
+const VOICE_KNOWN_GOOD=/samantha|daniel|karen|moira|serena|stephanie|google uk english|google us english|sonia|libby|ryan|aria|jenny|zira/i;
+function scoreVoice(v){
+  let s=0;
+  if(VOICE_QUALITY_HINT.test(v.name))s+=100;
+  if(VOICE_KNOWN_GOOD.test(v.name))s+=60;
+  if(v.lang==='en-GB')s+=30;else if(v.lang==='en-US')s+=20;else if(v.lang&&v.lang.startsWith('en'))s+=10;
+  return s;
+}
+function englishVoices(){return (window.speechSynthesis?window.speechSynthesis.getVoices():[]).filter(v=>v.lang&&v.lang.startsWith('en'));}
+function pickBestVoice(){
+  const vs=englishVoices();
+  if(!vs.length)return null;
+  if(selectedVoiceURI){const chosen=vs.find(v=>v.voiceURI===selectedVoiceURI);if(chosen)return chosen;}
+  return [...vs].sort((a,b)=>scoreVoice(b)-scoreVoice(a))[0];
 }
 function addStar(n,el){
   stars+=n;sessionStars+=n;document.getElementById('sc').textContent=stars;
@@ -446,13 +488,51 @@ function tts(text,rate,pitch){
   rate=rate||0.85;pitch=pitch||1.05;
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(String(text));
-  u.rate=rate;u.pitch=pitch;u.lang='en-GB';
-  const vs=window.speechSynthesis.getVoices();
-  const v=vs.find(x=>x.lang==='en-GB'&&x.localService)||vs.find(x=>x.lang.startsWith('en-GB'))||vs.find(x=>x.lang.startsWith('en'));
-  if(v)u.voice=v;
+  u.rate=rate;u.pitch=pitch;
+  const v=pickBestVoice();
+  if(v){u.voice=v;u.lang=v.lang;}else{u.lang='en-GB';}
   window.speechSynthesis.speak(u);return u;
 }
 function slow(t){return tts(t,0.72,1.08);}
+// ═══ VOICE PICKER ═══
+function openVoicePicker(){
+  renderVoiceList();
+  document.getElementById('voiceOverlay').classList.add('show');
+}
+function closeVoicePicker(){
+  window.speechSynthesis&&window.speechSynthesis.cancel();
+  document.getElementById('voiceOverlay').classList.remove('show');
+}
+function renderVoiceList(){
+  const box=document.getElementById('voiceList');
+  const vs=[...englishVoices()].sort((a,b)=>scoreVoice(b)-scoreVoice(a));
+  box.innerHTML='';
+  if(!vs.length){box.innerHTML='<div style="padding:14px;text-align:center;color:#888;font-weight:700;">No voices found yet — this device may still be loading them. Try again in a moment.</div>';return;}
+  const best=pickBestVoice();
+  vs.forEach(v=>{
+    const row=document.createElement('div');
+    const isSel=best&&v.voiceURI===best.voiceURI;
+    row.className='voice-row'+(isSel?' sel':'');
+    const tag=(VOICE_QUALITY_HINT.test(v.name)?'✨ ':'')+v.lang+(isSel&&!selectedVoiceURI?' · Recommended':'');
+    row.innerHTML='<div class="vr-main"><div class="vr-name">'+v.name+'</div><div class="vr-tag">'+tag+'</div></div><button class="vr-play">▶️</button>';
+    row.querySelector('.vr-play').onclick=(e)=>{e.stopPropagation();previewVoice(v);};
+    row.onclick=()=>selectVoice(v);
+    box.appendChild(row);
+  });
+}
+function selectVoice(v){
+  selectedVoiceURI=v.voiceURI;
+  saveState();
+  renderVoiceList();
+  previewVoice(v);
+}
+function previewVoice(v){
+  if(!window.speechSynthesis)return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance('Hello! I want more bubbles, please.');
+  u.rate=0.85;u.pitch=1.05;u.voice=v;u.lang=v.lang;
+  window.speechSynthesis.speak(u);
+}
 function setLevel(n,btn){lv=n;document.querySelectorAll('.lpill').forEach(b=>b.classList.remove('la'));btn.classList.add('la');lNew();cNew();bNew();fiNew();hapNew();sortNew();mNew();dNew();tInit();sNew();aNew();saveState();}
 // Level changes require a deliberate ~900ms hold, not a quick tap — a young/impulsive
 // child rarely sustains contact that long by accident, but an adult can hold on purpose.
@@ -504,7 +584,7 @@ function ynAns(v,card){
  else{card.classList.add('bad');setTimeout(()=>card.classList.remove('bad'),600);fb('ynfb','try','🤔 Listen again and try once more!');}
 }
 (function(){const cols=['#FF7043','#4FC3F7','#81C784','#CE93D8','#FFD54F','#80CBC4'];const w=document.getElementById('bubbles');for(let i=0;i<14;i++){const b=document.createElement('div');b.className='bubble';const s=40+Math.random()*90;b.style.cssText='width:'+s+'px;height:'+s+'px;background:'+cols[i%6]+';left:'+Math.random()*100+'%;animation-duration:'+(9+Math.random()*13)+'s;animation-delay:'+(-Math.random()*18)+'s;';w.appendChild(b);}})();
-if(window.speechSynthesis&&window.speechSynthesis.onvoiceschanged===null)window.speechSynthesis.onvoiceschanged=function(){};
+if(window.speechSynthesis){window.speechSynthesis.onvoiceschanged=function(){if(document.getElementById('voiceOverlay').classList.contains('show'))renderVoiceList();};}
 
 // ═══ LISTEN DATA ═══
 const LD={
@@ -845,6 +925,7 @@ function aConfirm(){if(!aChosen){fb('afb','try','👆 First pick something to as
     if(typeof saved.stars==='number'){stars=saved.stars;document.getElementById('sc').textContent=stars;}
     if(typeof saved.speechOn==='boolean'){speechOn=saved.speechOn;document.getElementById('muteBtn').textContent=speechOn?'🔊 On':'🔇 Off';}
     if(saved.symbolsOnly){document.body.classList.add('symbols-only');document.getElementById('symBtn').textContent='🔤 Words';}
+    if(typeof saved.selectedVoiceURI==='string')selectedVoiceURI=saved.selectedVoiceURI;
     if(typeof saved.lv==='number'&&saved.lv>=1&&saved.lv<=5){
       lv=saved.lv;
       document.querySelectorAll('.lpill').forEach(b=>b.classList.toggle('la',parseInt(b.dataset.lv,10)===lv));
