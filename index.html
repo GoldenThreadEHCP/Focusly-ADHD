@@ -72,6 +72,8 @@ outline:none;transition:border-color .2s;
 body.dark .login-input{background:#1A1410;border-color:#44322A;color:#F2E8D8}
 body.dark .login-input:focus{border-color:#E0875A}
 .login-input:focus{border-color:var(--accent)}
+.login-remember{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mid);margin-bottom:4px;cursor:pointer;user-select:none}
+.login-remember input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
 .login-err{font-size:12px;color:var(--rose);margin-top:8px;min-height:16px;text-align:center}
 .login-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--muted)}
 .login-switch a{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none}
@@ -395,6 +397,10 @@ resize:none;min-height:60px;
       <label class="login-label">Password</label>
       <input class="login-input" id="login-pw" type="password" placeholder="••••••••" autocomplete="current-password">
     </div>
+    <label class="login-remember">
+      <input type="checkbox" id="login-remember" checked>
+      <span>Stay signed in</span>
+    </label>
     <div class="login-err" id="login-err"></div>
     <button class="btn btn-primary btn-full" id="login-submit-btn" onclick="authSubmit()">Sign in</button>
     <div id="bio-section" style="display:none">
@@ -537,13 +543,16 @@ function scheduleNotifications(){
 var AUTH_MODE = 'login'; // 'login' | 'register'
 
 async function hashPw(pw) {   var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));   return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-} function getStoredUser() { return JSON.parse(localStorage.getItem('focusly_user')||'null'); } function getSession()    { return JSON.parse(sessionStorage.getItem('focusly_sess')||'null'); } function saveSession(u)  { sessionStorage.setItem('focusly_sess', JSON.stringify(u)); } function clearSession()  { sessionStorage.removeItem('focusly_sess'); }
+} function getStoredUser() { return JSON.parse(localStorage.getItem('focusly_user')||'null'); }
+function getSession() { return JSON.parse(localStorage.getItem('focusly_sess_persist') || sessionStorage.getItem('focusly_sess') || 'null'); }
+function saveSession(u, remember) { sessionStorage.setItem('focusly_sess', JSON.stringify(u)); if (remember === undefined) remember = !!localStorage.getItem('focusly_sess_persist'); if (remember) { localStorage.setItem('focusly_sess_persist', JSON.stringify(u)); } else { localStorage.removeItem('focusly_sess_persist'); } }
+function clearSession() { sessionStorage.removeItem('focusly_sess'); localStorage.removeItem('focusly_sess_persist'); }
 
 function authToggle() {   AUTH_MODE = AUTH_MODE === 'login' ? 'register' : 'login';   var isReg = AUTH_MODE === 'register';   document.getElementById('login-title').textContent      = isReg ? 'Create account' : 'Welcome back';   document.getElementById('login-sub').textContent        = isReg ? 'Set up your Focusly account' : 'Sign in to your Focusly account';   document.getElementById('login-name-field').style.display = isReg ? 'block' : 'none';   document.getElementById('login-submit-btn').textContent = isReg ? 'Create account' : 'Sign in';   document.getElementById('login-switch-text').textContent = isReg ? 'Already have an account?' : "Don't have an account?"; document.getElementById('login-switch-link').textContent = isReg ? ' Sign in' : ' Create one';
    document.getElementById('login-err').textContent = '';
 }
 
-async function authSubmit() {   var email = document.getElementById('login-email').value.trim();   var pw    = document.getElementById('login-pw').value;   var name  = document.getElementById('login-name').value.trim();   var errEl = document.getElementById('login-err');   errEl.textContent = '';
+async function authSubmit() {   var email = document.getElementById('login-email').value.trim();   var pw    = document.getElementById('login-pw').value;   var name  = document.getElementById('login-name').value.trim();   var remember = document.getElementById('login-remember').checked;   var errEl = document.getElementById('login-err');   errEl.textContent = '';
    if (!email || !pw) { errEl.textContent = 'Please fill in all fields.'; return; }   if (pw.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
    var btn2 = document.getElementById('login-submit-btn');   btn2.disabled = true; btn2.textContent = 'Please wait...';
 
@@ -551,7 +560,7 @@ async function authSubmit() {   var email = document.getElementById('login-email
    if (AUTH_MODE === 'register') {     if (!name) { errEl.textContent = 'Please enter your name.'; btn2.disabled=false; btn2.textContent='Create account'; return; }
     var existing = getStoredUser();     if (existing && existing.email === email) { errEl.textContent = 'An account with that email already exists.'; btn2.disabled=false; btn2.textContent='Create account'; return; }
     var user = {name:name, email:email, hash:hash};     localStorage.setItem('focusly_user', JSON.stringify(user));
-    saveSession(user);
+    saveSession(user, remember);
     bootApp(user);
   } else {
     var stored = getStoredUser();
@@ -559,7 +568,7 @@ async function authSubmit() {   var email = document.getElementById('login-email
     }
     if (stored.hash !== hash) {       var card2 = document.querySelector('.login-card');       card2.classList.add('shake'); setTimeout(function(){card2.classList.remove('shake');},500);       errEl.textContent = 'Incorrect password.'; btn2.disabled=false; btn2.textContent='Sign in'; return;
     }
-    saveSession(stored);
+    saveSession(stored, remember);
     bootApp(stored);
   }
 }
@@ -758,7 +767,7 @@ async function bioLogin() {
       }
     });
     if (assertion) {
-      saveSession(stored);
+      saveSession(stored, true);
       bootApp(stored);
     }
   } catch(e) {     var msg = e.name === 'NotAllowedError' ? 'Biometric authentication was cancelled.' : 'Biometric failed: ' + e.message;     document.getElementById('login-err').textContent = msg;
