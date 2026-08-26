@@ -89,7 +89,7 @@ position:fixed;top:0;left:0;height:100vh;width:190px;z-index:200;
 background:#F2EBE0;
 border-right:1px solid #E4D8C8;
 display:flex;flex-direction:column;padding:20px 0;
-overflow-y:auto;overflow-x:hidden;
+overflow-y:hidden;overflow-x:hidden;
 transition:transform .28s cubic-bezier(.4,0,.2,1);
 will-change:transform;
 }
@@ -119,7 +119,7 @@ body.dark #top-bar-name{color:#F2E8D8}
 #main{min-height:100vh;padding:72px 36px 60px;max-width:880px;transition:margin-left .28s cubic-bezier(.4,0,.2,1)}
 
 /* ── SIDEBAR INTERNALS ───────────────────────────────────── */
-.sb-brand{padding:0 14px 20px;display:flex;align-items:center;gap:9px}
+.sb-brand{flex-shrink:0;padding:0 14px 20px;display:flex;align-items:center;gap:9px}
 .sb-logo{width:32px;height:32px;background:#C4714A;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sb-name{font-family:‘Lora’,Georgia,serif;font-weight:700;font-size:14px;color:#2E1F0F}
 .sb-app-sub{font-size:10px;color:#A08B76}
@@ -133,7 +133,7 @@ transition:all .15s;color:#A08B76}
 body.dark .sb-pin{border-color:#44322A;color:#8A7060}
 body.dark .sb-pin:hover{background:#3A2C20}
 body.dark .sb-pin.on{background:#3D2418;border-color:#E0875A;color:#E0875A}
-.sb-nav{flex:1;padding:0 8px;display:flex;flex-direction:column;gap:1px}
+.sb-nav{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 8px;display:flex;flex-direction:column;gap:1px}
 .nav-btn{
 display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;border:none;
 cursor:grab;width:100%;text-align:left;background:transparent;color:#6B5240;
@@ -147,7 +147,7 @@ body.dark .nav-btn:hover{background:#3A2C20}
 body.dark .nav-btn.active{background:#3D2418;color:#F5B080}
 .nav-btn.drag-over{background:var(--alight);outline:2px dashed var(--accent)}
 .nav-btn.dragging{opacity:.4}
-.sb-foot{padding:14px 14px 0;border-top:1px solid #E4D8C8}
+.sb-foot{flex-shrink:0;padding:14px 14px 0;border-top:1px solid #E4D8C8}
 .sb-foot-tip{font-size:10px;color:#A08B76;line-height:1.5;margin-bottom:10px}
 .sb-foot-actions{display:flex;gap:6px}
 .sb-foot-btn{flex:1;padding:7px 6px;border-radius:8px;border:1px solid #E4D8C8;background:transparent;
