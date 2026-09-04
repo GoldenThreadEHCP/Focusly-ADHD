@@ -1444,7 +1444,6 @@ function gcalDisconnect(){
   if(GCAL.accessToken&&window.google&&google.accounts&&google.accounts.oauth2){try{google.accounts.oauth2.revoke(GCAL.accessToken,function(){});}catch(e){}}
   GCAL.accessToken=null;GCAL.tokenExpiry=0;GCAL.lastSync=null;
   var cfg=getGcalConfig();setGcalConfig(cfg?{clientId:cfg.clientId,connected:false}:null);
-  S.gcalEvents=[];
 }
 async function gcalEnsureToken(){
   if(gcalConnected())return GCAL.accessToken;
@@ -1497,11 +1496,6 @@ async function gcalPushAll(){
     else if(r.gcalEventId)await gcalDeleteReminderEvent(r);
   }
 }
-async function gcalPullEvents(){
-  var now=new Date();
-  var json=await gcalApi('calendars/primary/events?timeMin='+encodeURIComponent(now.toISOString())+'&maxResults=15&singleEvents=true&orderBy=startTime');
-  S.gcalEvents=(json.items||[]).map(function(e){return{id:e.id,title:e.summary||'(untitled)',start:e.start&&(e.start.dateTime||e.start.date),allDay:!!(e.start&&e.start.date&&!e.start.dateTime),link:e.htmlLink};});
-}
 var _gcalSyncTimer=null;
 function scheduleGcalSync(){
   var cfg=getGcalConfig();if(!cfg||!cfg.connected)return;
@@ -1510,7 +1504,7 @@ function scheduleGcalSync(){
 async function gcalSyncNow(){
   if(GCAL.busy)return{ok:false,error:'Already syncing'};
   GCAL.busy=true;
-  try{await gcalPushAll();await gcalPullEvents();GCAL.lastSync=Date.now();return{ok:true};}
+  try{await gcalPushAll();GCAL.lastSync=Date.now();return{ok:true};}
   catch(e){return{ok:false,error:e.message};}
   finally{GCAL.busy=false;renderView();}
 }
@@ -1855,25 +1849,6 @@ function vReminders(){
   calCard.appendChild(calBtns);   var calNote=p({fontSize:'11px',color:'var(--muted)',marginTop:'10px',lineHeight:'1.5'},'💡 After downloading the .ics file: open it to import into Apple Calendar, or drag it into Outlook. On iPhone, save to Files then tap to import.');
   calCard.appendChild(calNote);
   s.appendChild(calCard);
-
-  var gcfgR=getGcalConfig();
-  if(gcfgR&&gcfgR.connected){
-    var gCard=card({padding:'16px'});
-    var gHdr=row('space-between');gHdr.style.alignItems='center';
-    gHdr.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'14px',color:'var(--text)'},'📅 Upcoming in Google Calendar'));
-    var gSyncBtn=btn('🔄','btn-ghost btn-sm',async function(){gSyncBtn.disabled=true;await gcalSyncNow();});
-    gSyncBtn.title='Sync now';gHdr.appendChild(gSyncBtn);
-    gCard.appendChild(gHdr);
-    var gEvents=S.gcalEvents||[];
-    if(!gEvents.length){gCard.appendChild(p({fontSize:'12px',color:'var(--muted)',marginTop:'8px'},GCAL.lastSync?'No upcoming events.':'Tap 🔄 to load your Google Calendar.'));}
-    else{gEvents.forEach(function(ev){
-      var er=d({display:'flex',alignItems:'center',gap:'8px',padding:'8px 0',borderTop:'1px solid var(--border)'});
-      var when=ev.allDay?ev.start:new Date(ev.start).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'});
-      er.innerHTML='<span style="flex:1;font-size:13px;color:var(--text)">'+ev.title+'</span><span style="font-size:11px;color:var(--muted)">'+when+'</span>';
-      gCard.appendChild(er);
-    });}
-    s.appendChild(gCard);
-  }
    var list=d({display:'flex',flexDirection:'column',gap:'10px'});
   S.reminders.forEach(function(r,i){
     var c=card({padding:'14px 16px',opacity:r.active?'1':'.6',animation:'fadeUp .3s ease '+(i*.05)+'s both'});
@@ -2012,7 +1987,7 @@ function vSettings(){
   (function(){
     var gc=card({padding:'20px'});
     gc.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'6px',color:'var(--text)'},'🔗 Google Calendar (Live Sync)'));
-    gc.appendChild(p({fontSize:'13px',color:'var(--muted)',marginBottom:'14px',lineHeight:'1.55'},'Two-way sync: active reminders are pushed to your Google Calendar, and upcoming Google events show on the Reminders page. Sync runs automatically while Focusly is open — there\'s no server, so nothing syncs while the app is fully closed.'));
+    gc.appendChild(p({fontSize:'13px',color:'var(--muted)',marginBottom:'14px',lineHeight:'1.55'},'One-way push: your active reminders are created/updated as events on your Google Calendar. Sync runs automatically while Focusly is open — there\'s no server, so nothing syncs while the app is fully closed.'));
     var box=d({padding:'14px',borderRadius:'12px',background:'var(--bg)',border:'1px solid var(--border)'});
     var gcfg=getGcalConfig();
     if(gcfg&&gcfg.connected){
