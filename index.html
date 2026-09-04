@@ -489,12 +489,13 @@ resize:none;min-height:60px;
 //  SVG ICONS
 // ════════════════════════════════════════════════════════
 var IC = {   info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',   plus:    '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',   check:   '<polyline points="20 6 9 17 5 12"/>',   trash:   '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>',   chevD:   '<polyline points="6 9 12 15 18 9"/>',   chevR:   '<polyline points="9 18 15 12 9 6"/>',   play:    '<polygon points="5 3 19 12 5 21 5 3"/>',   pause:   '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',   refresh: '<polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>',   cal:     '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',   close:   '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',   capture: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',   star:    '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',   cloud:   '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>',   download:'<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',   link:    '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',   moon:    '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>',   sun:     '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+   edit:    '<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>',
 }; function ic(n,sz,col,st){sz=sz||18;col=col||'currentColor';st=st||'';return'<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="'+st+'">'+(IC[n]||'')+'</svg>';}
 
 // ════════════════════════════════════════════════════════
 //  CLOUD SYNC (JSONBin.io — free cross-device sync)
 // ════════════════════════════════════════════════════════
-var JSONBIN_API='https://api.jsonbin.io/v3/b'; function getSyncState(){return JSON.parse(localStorage.getItem('focusly_sync')||'null');} function setSyncState(st){if(st)localStorage.setItem('focusly_sync',JSON.stringify(st));else localStorage.removeItem('focusly_sync');} function gatherSaveData(){return{v:4,tasks:S.tasks,captures:S.captures.map(function(c){return{id:c.id,text:c.text,file:c.file?{name:c.file.name,type:c.file.type}:undefined};}),reminders:S.reminders,projects:S.projects,focus:{sound:S.focus.sound,dur:S.focus.dur,brk:S.focus.brk},sleep:S.sleep,habits:S.habits||[],moodLog:S.moodLog||[],water:S.water||0,intention:S.intention||'',musicEmbed:S.musicEmbed||'',energy:S.energy,timeBlocks:S.timeBlocks||[],medsLog:S.medsLog||{},weatherMood:S.weatherMood||'',streaks:S.streaks||{focus:0,days:0},checklists:S.checklists||[],deletedItems:S.deletedItems||[],widgets:getActiveWidgets(),navOrder:NAV_ORDER,savedAt:new Date().toISOString()};} function restoreData(d){if(!d||!d.v)return;['tasks','captures','reminders','projects','sleep','habits','moodLog','timeBlocks','medsLog','checklists','deletedItems'].forEach(function(k){if(d[k])S[k]=d[k];});if(d.focus){S.focus.sound=d.focus.sound;S.focus.dur=d.focus.dur;S.focus.brk=d.focus.brk;}if(d.water!==undefined)S.water=d.water;if(d.intention)S.intention=d.intention;if(d.musicEmbed)S.musicEmbed=d.musicEmbed;if(d.energy)S.energy=d.energy;if(d.weatherMood)S.weatherMood=d.weatherMood;if(d.streaks)S.streaks=d.streaks;if(d.widgets)saveWidgets(d.widgets);if(d.navOrder){NAV_ORDER=d.navOrder;localStorage.setItem('focusly_nav_order',JSON.stringify(NAV_ORDER));}} function saveMediaLocally(){try{localStorage.setItem('focusly_voice',JSON.stringify((S.voiceNotes||[]).slice(0,20)));localStorage.setItem('focusly_meetings',JSON.stringify((S.meetings||[]).slice(0,10)));}catch(e){}} function loadMediaLocally(){try{S.voiceNotes=JSON.parse(localStorage.getItem('focusly_voice')||'[]');S.meetings=JSON.parse(localStorage.getItem('focusly_meetings')||'[]');}catch(e){S.voiceNotes=[];S.meetings=[];}} async function cloudPush(){
+var JSONBIN_API='https://api.jsonbin.io/v3/b'; function getSyncState(){return JSON.parse(localStorage.getItem('focusly_sync')||'null');} function setSyncState(st){if(st)localStorage.setItem('focusly_sync',JSON.stringify(st));else localStorage.removeItem('focusly_sync');} function gatherSaveData(){return{v:4,tasks:S.tasks,taskLists:S.taskLists||[],captures:S.captures.map(function(c){return{id:c.id,text:c.text,file:c.file?{name:c.file.name,type:c.file.type}:undefined};}),reminders:S.reminders,projects:S.projects,focus:{sound:S.focus.sound,dur:S.focus.dur,brk:S.focus.brk},sleep:S.sleep,habits:S.habits||[],moodLog:S.moodLog||[],water:S.water||0,intention:S.intention||'',musicEmbed:S.musicEmbed||'',energy:S.energy,timeBlocks:S.timeBlocks||[],medsLog:S.medsLog||{},weatherMood:S.weatherMood||'',streaks:S.streaks||{focus:0,days:0},checklists:S.checklists||[],deletedItems:S.deletedItems||[],widgets:getActiveWidgets(),navOrder:NAV_ORDER,savedAt:new Date().toISOString()};} function restoreData(d){if(!d||!d.v)return;['tasks','taskLists','captures','reminders','projects','sleep','habits','moodLog','timeBlocks','medsLog','checklists','deletedItems'].forEach(function(k){if(d[k])S[k]=d[k];});if(d.focus){S.focus.sound=d.focus.sound;S.focus.dur=d.focus.dur;S.focus.brk=d.focus.brk;}if(d.water!==undefined)S.water=d.water;if(d.intention)S.intention=d.intention;if(d.musicEmbed)S.musicEmbed=d.musicEmbed;if(d.energy)S.energy=d.energy;if(d.weatherMood)S.weatherMood=d.weatherMood;if(d.streaks)S.streaks=d.streaks;if(d.widgets)saveWidgets(d.widgets);if(d.navOrder){NAV_ORDER=d.navOrder;localStorage.setItem('focusly_nav_order',JSON.stringify(NAV_ORDER));}} function saveMediaLocally(){try{localStorage.setItem('focusly_voice',JSON.stringify((S.voiceNotes||[]).slice(0,20)));localStorage.setItem('focusly_meetings',JSON.stringify((S.meetings||[]).slice(0,10)));}catch(e){}} function loadMediaLocally(){try{S.voiceNotes=JSON.parse(localStorage.getItem('focusly_voice')||'[]');S.meetings=JSON.parse(localStorage.getItem('focusly_meetings')||'[]');}catch(e){S.voiceNotes=[];S.meetings=[];}} async function cloudPush(){
   var data=gatherSaveData(), sync=getSyncState();
   if(!sync||!sync.apiKey) return{ok:false,error:'Not configured'};
   var isAuthErr=function(msg){return msg&&(msg.toLowerCase().includes('invalid')||msg.toLowerCase().includes('access')||msg.toLowerCase().includes('belong')||msg.toLowerCase().includes('unauthori'));};
@@ -640,8 +641,8 @@ function sbPin()    { SB.pinned = !SB.pinned; SB.open = true; sbApply(); }
 // ════════════════════════════════════════════════════════
 var S = {   view:'dashboard', currentUser:null, energy:null, showCapture:false,
   expandedTask:null, breathIv:null, timerIv:null,
-  tasks:[     {id:1,title:'Complete monthly report',notes:'For team meeting',dueDate:'Today',done:false,      subtasks:[{id:11,title:'Gather data from spreadsheet',done:true},{id:12,title:'Write summary paragraph',done:false},{id:13,title:'Send to manager',done:false}]},     {id:2,title:'Book GP appointment',notes:'Medication review',dueDate:'',done:false,subtasks:[]},     {id:3,title:'Reply to school emails',notes:'',dueDate:'This week',done:false,subtasks:[]},     {id:4,title:'Renew car insurance',notes:'Due end of month',dueDate:'',done:true,subtasks:[]},
-  ],   captures:[{id:1,text:'Call Mum on Sunday'},{id:2,text:'Look into ADHD coaching referral'}],
+  tasks:[     {id:1,title:'Complete monthly report',notes:'For team meeting',dueDate:'Today',done:false,listId:'default',      subtasks:[{id:11,title:'Gather data from spreadsheet',done:true},{id:12,title:'Write summary paragraph',done:false},{id:13,title:'Send to manager',done:false}]},     {id:2,title:'Book GP appointment',notes:'Medication review',dueDate:'',done:false,listId:'default',subtasks:[]},     {id:3,title:'Reply to school emails',notes:'',dueDate:'This week',done:false,listId:'default',subtasks:[]},     {id:4,title:'Renew car insurance',notes:'Due end of month',dueDate:'',done:true,listId:'default',subtasks:[]},
+  ],   taskLists:[{id:'default',name:'My Tasks',emoji:'✅'}],   captures:[{id:1,text:'Call Mum on Sunday'},{id:2,text:'Look into ADHD coaching referral'}],
   reminders:[     {id:1,emoji:'💊',label:'Medication', time:'08:00',   repeat:'Daily',   active:true},     {id:2,emoji:'💧',label:'Hydration',  time:'Every 2h',repeat:'Daily',   active:true},     {id:3,emoji:'🔑',label:'Keys check', time:'07:45',   repeat:'Weekdays',active:true},     {id:4,emoji:'🏃',label:'School run', time:'15:15',   repeat:'Weekdays',active:false},     {id:5,emoji:'😴',label:'Wind down',  time:'21:30',   repeat:'Daily',   active:false},
   ],
   projects:[     {id:1,name:'Home Renovation',  emoji:'🏠',color:'#C89030',cLight:'#FBF2DC',tasks:8, notes:'Bathroom first'},     {id:2,name:'Job Applications', emoji:'💼',color:'#7065A8',cLight:'#ECEAF8',tasks:5, notes:'CV draft done'},     {id:3,name:'Study: Level 3',   emoji:'📚',color:'#4E8B6A',cLight:'#E0F0E8',tasks:12,notes:'Assignment due March'},
@@ -1488,29 +1489,56 @@ function vDashboard(){
 // ════════════════════════════════════════════════════════
 //  VIEW: TASKS
 // ════════════════════════════════════════════════════════
-function vTasks(){
-  var now=Date.now();
-  S.tasks=S.tasks.filter(function(t){return !(t.done&&t.completedAt&&(now-t.completedAt)>86400000);});
-  var pending=S.tasks.filter(function(t){return !t.done;}),done=S.tasks.filter(function(t){return t.done;});
-  var s=sec();
-  var hdr=row('space-between');hdr.style.alignItems='flex-end';
-  var hl=d();hl.innerHTML='<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700;color:var(--text)">Tasks</h1><p style="color:var(--muted);font-size:14px;margin-top:4px">'+pending.length+' pending · '+done.length+' completed</p>';
-  hdr.appendChild(hl);
-  hdr.appendChild(btn(ic('plus',16,'#fff')+' Add Task','btn-primary',function(){showModal('New Task',520,function(body){
+function ensureTaskLists(){
+  if(!S.taskLists||!S.taskLists.length)S.taskLists=[{id:'default',name:'My Tasks',emoji:'✅'}];
+  var ids=S.taskLists.map(function(l){return l.id;});
+  S.tasks.forEach(function(t){if(!t.listId||ids.indexOf(t.listId)<0)t.listId=S.taskLists[0].id;});
+}
+function getTLCollapsed(){return JSON.parse(localStorage.getItem('focusly_tl_collapsed')||'{}');}
+function setTLCollapsed(o){localStorage.setItem('focusly_tl_collapsed',JSON.stringify(o));}
+function showAddTaskModal(listId){
+  showModal('New Task',520,function(body){
+    var lsel=document.createElement('select');Object.assign(lsel.style,{width:'100%',padding:'10px 14px',borderRadius:'10px',border:'1.5px solid var(--border)',background:'var(--bg)',fontFamily:'DM Sans,sans-serif',fontSize:'14px',color:'var(--text)',outline:'none'});
+    S.taskLists.forEach(function(l){var o=document.createElement('option');o.value=l.id;o.textContent=l.emoji+' '+l.name;if(l.id===listId)o.selected=true;lsel.appendChild(o);});
     var ti=inp('What needs doing?'),nt=ta('Notes (optional)');
     var di=document.createElement('input');di.type='date';Object.assign(di.style,{width:'100%',padding:'10px 14px',borderRadius:'10px',border:'1.5px solid var(--border)',background:'var(--bg)',fontFamily:'DM Sans,sans-serif',fontSize:'14px',color:'var(--text)',outline:'none'});
     var br=d({display:'flex',gap:'8px',marginTop:'12px'});
-    br.appendChild(btn('Save Task','btn-primary',function(){if(!ti.value.trim())return;S.tasks.push({id:Date.now(),title:ti.value.trim(),notes:nt.value,dueDate:di.value,done:false,subtasks:[],files:[]});closeModal();renderView();}));
+    br.appendChild(btn('Save Task','btn-primary',function(){if(!ti.value.trim())return;S.tasks.push({id:Date.now(),title:ti.value.trim(),notes:nt.value,dueDate:di.value,done:false,subtasks:[],files:[],listId:lsel.value});closeModal();renderView();}));
     br.appendChild(btn('Cancel','btn-ghost',closeModal));
-    body.appendChild(ti);body.appendChild(gap(8));body.appendChild(di);body.appendChild(gap(8));body.appendChild(nt);body.appendChild(br);
-  });}));
-  s.appendChild(hdr);
-  var pills=d({display:'flex',gap:'8px',flexWrap:'wrap'});
-  Object.keys(TIPS).forEach(function(key){var b=document.createElement('button');b.className='tip-pill';b.innerHTML=ic('info',12,'var(--muted)')+' '+TIPS[key].title;b.onclick=function(){showTip(key);};pills.appendChild(b);});
-  s.appendChild(pills);
-  var list=d({display:'flex',flexDirection:'column',gap:'10px'});
-  if(!pending.length){var ec=card({padding:'20px'});ec.innerHTML='<p style="color:var(--muted);text-align:center;padding:20px 0">All caught up! 🎉 Add a task above.</p>';list.appendChild(ec);}
-  pending.forEach(function(task,i){
+    body.appendChild(lsel);body.appendChild(gap(8));body.appendChild(ti);body.appendChild(gap(8));body.appendChild(di);body.appendChild(gap(8));body.appendChild(nt);body.appendChild(br);
+  });
+}
+function showTaskListModal(existing){
+  showModal(existing?'Rename List':'New Task List',420,function(body){
+    var er=row();er.style.cssText+=';gap:8px;margin-bottom:10px';
+    var ei=inp('✅');ei.style.cssText='max-width:56px;text-align:center;font-size:20px;padding:8px;width:56px';ei.value=existing?existing.emoji:'✅';
+    var ni=inp('List name…');ni.style.flex='1';ni.value=existing?existing.name:'';
+    er.appendChild(ei);er.appendChild(ni);body.appendChild(er);
+    var br=d({display:'flex',gap:'8px'});
+    br.appendChild(btn(existing?'Save':'Create','btn-primary',function(){
+      if(!ni.value.trim())return;
+      if(existing){existing.name=ni.value.trim();existing.emoji=ei.value||'✅';}
+      else{S.taskLists.push({id:'tl'+Date.now(),name:ni.value.trim(),emoji:ei.value||'✅'});}
+      closeModal();renderView();
+    }));
+    br.appendChild(btn('Cancel','btn-ghost',closeModal));body.appendChild(br);
+  });
+}
+function deleteTaskList(list){
+  if(S.taskLists.length<2){alert('You need at least one task list.');return;}
+  var fallback=S.taskLists.filter(function(l){return l.id!==list.id;})[0];
+  if(!confirm('Delete "'+list.name+'"? Its tasks will move to "'+fallback.name+'".'))return;
+  S.tasks.forEach(function(t){if(t.listId===list.id)t.listId=fallback.id;});
+  S.taskLists=S.taskLists.filter(function(l){return l.id!==list.id;});
+  renderView();
+}
+function moveTaskList(list,dir){
+  var i=S.taskLists.indexOf(list),j=i+dir;
+  if(j<0||j>=S.taskLists.length)return;
+  S.taskLists.splice(i,1);S.taskLists.splice(j,0,list);
+  renderView();
+}
+function buildTaskCard(task,i){
     if(!task.files)task.files=[];
     var prog=task.subtasks.length?Math.round(task.subtasks.filter(function(s2){return s2.done;}).length/task.subtasks.length*100):null;
     var isExp=S.expandedTask===task.id;
@@ -1566,26 +1594,69 @@ function vTasks(){
       ar.appendChild((function(t){return btn('Add','btn-primary btn-sm',function(){if(si2.value.trim()){t.subtasks.push({id:Date.now(),title:si2.value.trim(),done:false});renderView();}});})(task));
       ss.appendChild(ar);tc.appendChild(ss);
     }
-    list.appendChild(tc);
-  });
-  s.appendChild(list);
-  if(done.length){
-    var dHdr=row('space-between');dHdr.style.cssText='margin-top:8px;margin-bottom:10px;align-items:center';
-    dHdr.appendChild(p({fontSize:'12px',color:'var(--muted)',fontWeight:'600',letterSpacing:'.05em',textTransform:'uppercase'},done.length+' Completed'));
-    var clearRow=d({display:'flex',gap:'8px',alignItems:'center'});
-    var earliest=done.reduce(function(m,t){return(t.completedAt&&t.completedAt<m)?t.completedAt:m;},Infinity);
-    if(earliest!==Infinity){var hoursLeft=Math.max(0,Math.round((earliest+86400000-Date.now())/3600000));clearRow.appendChild(p({fontSize:'11px',color:'var(--muted)'},'Auto-clears in ~'+hoursLeft+'h'));}
-    clearRow.appendChild(btn('Clear all','btn-ghost btn-sm',function(){S.tasks=S.tasks.filter(function(t){return !t.done;});renderView();}));
-    dHdr.appendChild(clearRow);s.appendChild(dHdr);
-    done.forEach(function(task){
-      var dr=d({display:'flex',alignItems:'center',gap:'10px',padding:'10px 14px',marginBottom:'6px',borderRadius:'10px',background:'var(--glight)',opacity:'.75'});
-      var ucb=document.createElement('button');ucb.className='cb cb-sm on';ucb.innerHTML=ic('check',10,'#fff');
-      (function(t){ucb.onclick=function(){t.done=false;delete t.completedAt;renderView();};})(task);
-      dr.appendChild(ucb);
-      dr.appendChild(hx('span',{fontSize:'14px',color:'var(--mid)',textDecoration:'line-through',flex:'1'},task.title));
-      s.appendChild(dr);
-    });
+    return tc;
+}
+function buildTaskListSection(list,idx,count){
+  var collapsed=getTLCollapsed();
+  var isCol=!!collapsed[list.id];
+  var wrap=d({});wrap.className='task-list-section';
+  var outer=card({padding:'0',overflow:'hidden'});
+  var head=d({display:'flex',alignItems:'center',gap:'6px',padding:'14px 16px',cursor:'pointer',flexWrap:'wrap',borderBottom:isCol?'none':'1px solid var(--border)'});
+  var listTasks=S.tasks.filter(function(t){return t.listId===list.id;});
+  var pending=listTasks.filter(function(t){return !t.done;}),doneT=listTasks.filter(function(t){return t.done;});
+  var titleEl=hx('span',{fontSize:'18px'});titleEl.textContent=list.emoji;
+  var nameEl=hx('span',{flex:'1',fontWeight:'700',fontSize:'15px',fontFamily:'Lora,Georgia,serif',color:'var(--text)',minWidth:'80px'});nameEl.textContent=list.name;
+  var countEl=hx('span',{fontSize:'12px',color:'var(--muted)'});countEl.textContent=pending.length+' pending · '+doneT.length+' done';
+  head.appendChild(titleEl);head.appendChild(nameEl);head.appendChild(countEl);
+  head.addEventListener('click',function(e){if(e.target.closest('.icon-btn'))return;var c=getTLCollapsed();c[list.id]=!c[list.id];setTLCollapsed(c);renderView();});
+  var upBtn=document.createElement('button');upBtn.className='icon-btn';upBtn.title='Move list up';upBtn.textContent='▲';upBtn.style.fontSize='10px';upBtn.disabled=idx===0;upBtn.style.opacity=idx===0?'.3':'1';upBtn.onclick=function(){moveTaskList(list,-1);};
+  var downBtn=document.createElement('button');downBtn.className='icon-btn';downBtn.title='Move list down';downBtn.textContent='▼';downBtn.style.fontSize='10px';downBtn.disabled=idx===count-1;downBtn.style.opacity=idx===count-1?'.3':'1';downBtn.onclick=function(){moveTaskList(list,1);};
+  var addBtn=document.createElement('button');addBtn.className='icon-btn';addBtn.title='Add task';addBtn.innerHTML=ic('plus',14,'var(--accent)');addBtn.onclick=function(){showAddTaskModal(list.id);};
+  var editBtn=document.createElement('button');editBtn.className='icon-btn';editBtn.title='Rename list';editBtn.innerHTML=ic('edit',13,'var(--muted)');editBtn.onclick=function(){showTaskListModal(list);};
+  var delBtn=document.createElement('button');delBtn.className='icon-btn';delBtn.title='Delete list';delBtn.innerHTML=ic('trash',13,'var(--rose)');delBtn.onclick=function(){deleteTaskList(list);};
+  var chev=hx('span',{marginLeft:'2px',display:'flex'});chev.innerHTML=ic(isCol?'chevR':'chevD',14,'var(--muted)');
+  head.appendChild(upBtn);head.appendChild(downBtn);head.appendChild(addBtn);head.appendChild(editBtn);head.appendChild(delBtn);head.appendChild(chev);
+  outer.appendChild(head);
+  if(!isCol){
+    var body=d({padding:'14px 16px',display:'flex',flexDirection:'column',gap:'10px'});
+    if(!pending.length&&!doneT.length){body.appendChild(p({color:'var(--muted)',fontSize:'13px',textAlign:'center',padding:'8px 0'},'No tasks yet — tap + to add one.'));}
+    pending.forEach(function(task,i){body.appendChild(buildTaskCard(task,i));});
+    if(doneT.length){
+      var dHdr=row('space-between');dHdr.style.cssText='margin-top:2px;align-items:center';
+      dHdr.appendChild(p({fontSize:'11px',color:'var(--muted)',fontWeight:'600',letterSpacing:'.05em',textTransform:'uppercase'},doneT.length+' Completed'));
+      dHdr.appendChild(btn('Clear','btn-ghost btn-sm',function(){S.tasks=S.tasks.filter(function(t){return !(t.listId===list.id&&t.done);});renderView();}));
+      body.appendChild(dHdr);
+      doneT.forEach(function(task){
+        var dr=d({display:'flex',alignItems:'center',gap:'10px',padding:'10px 14px',borderRadius:'10px',background:'var(--glight)',opacity:'.75'});
+        var ucb=document.createElement('button');ucb.className='cb cb-sm on';ucb.innerHTML=ic('check',10,'#fff');
+        (function(t){ucb.onclick=function(){t.done=false;delete t.completedAt;renderView();};})(task);
+        dr.appendChild(ucb);
+        dr.appendChild(hx('span',{fontSize:'14px',color:'var(--mid)',textDecoration:'line-through',flex:'1'},task.title));
+        body.appendChild(dr);
+      });
+    }
+    outer.appendChild(body);
   }
+  wrap.appendChild(outer);
+  return wrap;
+}
+function vTasks(){
+  ensureTaskLists();
+  var now=Date.now();
+  S.tasks=S.tasks.filter(function(t){return !(t.done&&t.completedAt&&(now-t.completedAt)>86400000);});
+  var totalPending=S.tasks.filter(function(t){return !t.done;}).length,totalDone=S.tasks.filter(function(t){return t.done;}).length;
+  var s=sec();
+  var hdr=row('space-between');hdr.style.alignItems='flex-end';
+  var hl=d();hl.innerHTML='<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700;color:var(--text)">Tasks</h1><p style="color:var(--muted);font-size:14px;margin-top:4px">'+totalPending+' pending · '+totalDone+' completed across '+S.taskLists.length+' list'+(S.taskLists.length===1?'':'s')+'</p>';
+  hdr.appendChild(hl);
+  hdr.appendChild(btn(ic('plus',16,'#fff')+' New List','btn-primary',function(){showTaskListModal(null);}));
+  s.appendChild(hdr);
+  var pills=d({display:'flex',gap:'8px',flexWrap:'wrap'});
+  Object.keys(TIPS).forEach(function(key){var b=document.createElement('button');b.className='tip-pill';b.innerHTML=ic('info',12,'var(--muted)')+' '+TIPS[key].title;b.onclick=function(){showTip(key);};pills.appendChild(b);});
+  s.appendChild(pills);
+  var listsWrap=d({display:'flex',flexDirection:'column',gap:'12px'});
+  S.taskLists.forEach(function(list,idx){listsWrap.appendChild(buildTaskListSection(list,idx,S.taskLists.length));});
+  s.appendChild(listsWrap);
   return s;
 }
 
