@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Focusly — ADHD Support</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ── THEME VARIABLES ──────────────────────────────────────── */
 :root{
@@ -1406,6 +1407,115 @@ function openGCalReminder(r) {
 }
 
 // ════════════════════════════════════════════════════════
+//  GOOGLE CALENDAR — LIVE TWO-WAY SYNC
+// ════════════════════════════════════════════════════════
+var GCAL_SCOPE='https://www.googleapis.com/auth/calendar.events';
+function getGcalConfig(){return JSON.parse(localStorage.getItem('focusly_gcal')||'null');}
+function setGcalConfig(cfg){if(cfg)localStorage.setItem('focusly_gcal',JSON.stringify(cfg));else localStorage.removeItem('focusly_gcal');}
+var GCAL={tokenClient:null,accessToken:null,tokenExpiry:0,lastSync:null,busy:false,_resolve:null,_reject:null};
+function gcalInitClient(clientId){
+  if(!window.google||!google.accounts||!google.accounts.oauth2)return null;
+  if(GCAL.tokenClient&&GCAL._clientId===clientId)return GCAL.tokenClient;
+  GCAL._clientId=clientId;
+  GCAL.tokenClient=google.accounts.oauth2.initTokenClient({client_id:clientId,scope:GCAL_SCOPE,callback:function(resp){
+    if(resp&&resp.error){if(GCAL._reject)GCAL._reject(new Error(resp.error));return;}
+    GCAL.accessToken=resp.access_token;GCAL.tokenExpiry=Date.now()+(resp.expires_in*1000);
+    if(GCAL._resolve)GCAL._resolve(resp);
+  }});
+  return GCAL.tokenClient;
+}
+function gcalRequestToken(prompt){
+  return new Promise(function(resolve,reject){
+    if(!GCAL.tokenClient){reject(new Error('Google Calendar is not configured yet.'));return;}
+    GCAL._resolve=resolve;GCAL._reject=reject;
+    GCAL.tokenClient.requestAccessToken({prompt:prompt});
+  });
+}
+function gcalConnected(){return !!(GCAL.accessToken&&Date.now()<GCAL.tokenExpiry);}
+async function gcalConnect(){
+  var cfg=getGcalConfig();
+  if(!cfg||!cfg.clientId)throw new Error('Add your Google OAuth Client ID first.');
+  gcalInitClient(cfg.clientId);
+  await gcalRequestToken('consent');
+  setGcalConfig({clientId:cfg.clientId,connected:true});
+  await gcalSyncNow();
+}
+function gcalDisconnect(){
+  if(GCAL.accessToken&&window.google&&google.accounts&&google.accounts.oauth2){try{google.accounts.oauth2.revoke(GCAL.accessToken,function(){});}catch(e){}}
+  GCAL.accessToken=null;GCAL.tokenExpiry=0;GCAL.lastSync=null;
+  var cfg=getGcalConfig();setGcalConfig(cfg?{clientId:cfg.clientId,connected:false}:null);
+  S.gcalEvents=[];
+}
+async function gcalEnsureToken(){
+  if(gcalConnected())return GCAL.accessToken;
+  var cfg=getGcalConfig();
+  if(!cfg||!cfg.clientId||!cfg.connected)throw new Error('Google Calendar is not connected.');
+  gcalInitClient(cfg.clientId);
+  await gcalRequestToken('');
+  return GCAL.accessToken;
+}
+async function gcalApi(path,opts){
+  var token=await gcalEnsureToken();
+  opts=opts||{};opts.headers=Object.assign({'Authorization':'Bearer '+token,'Content-Type':'application/json'},opts.headers||{});
+  var res=await fetch('https://www.googleapis.com/calendar/v3/'+path,opts);
+  if(res.status===204)return{};
+  var json=await res.json().catch(function(){return{};});
+  if(!res.ok)throw new Error((json.error&&json.error.message)||'Google Calendar request failed');
+  return json;
+}
+function gcalRecurrence(r){
+  if(r.repeat==='Daily')return['RRULE:FREQ=DAILY'];
+  if(r.repeat==='Weekdays')return['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'];
+  if(r.repeat==='Weekends')return['RRULE:FREQ=WEEKLY;BYDAY=SA,SU'];
+  if(r.repeat==='Weekly')return['RRULE:FREQ=WEEKLY'];
+  return undefined;
+}
+function gcalRFC3339(dt){var p2=function(n){return String(n).padStart(2,'0');};return dt.getFullYear()+'-'+p2(dt.getMonth()+1)+'-'+p2(dt.getDate())+'T'+p2(dt.getHours())+':'+p2(dt.getMinutes())+':00';}
+async function gcalPushReminder(r){
+  var now=new Date(),start=new Date();
+  if(r.time&&r.time.indexOf(':')>-1){var parts=r.time.split(':');start.setHours(+parts[0],+parts[1],0,0);}
+  if(start<now)start.setDate(start.getDate()+1);
+  var end=new Date(start.getTime()+15*60000);
+  var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  var body={summary:r.emoji+' '+r.label,description:'Synced from Focusly',start:{dateTime:gcalRFC3339(start),timeZone:tz},end:{dateTime:gcalRFC3339(end),timeZone:tz}};
+  var rec=gcalRecurrence(r);if(rec)body.recurrence=rec;
+  if(r.gcalEventId){
+    try{await gcalApi('calendars/primary/events/'+r.gcalEventId,{method:'PATCH',body:JSON.stringify(body)});return;}catch(e){}
+  }
+  var created=await gcalApi('calendars/primary/events',{method:'POST',body:JSON.stringify(body)});
+  r.gcalEventId=created.id;
+}
+async function gcalDeleteReminderEvent(r){
+  if(!r.gcalEventId)return;
+  try{await gcalApi('calendars/primary/events/'+r.gcalEventId,{method:'DELETE'});}catch(e){}
+  delete r.gcalEventId;
+}
+async function gcalPushAll(){
+  for(var i=0;i<S.reminders.length;i++){
+    var r=S.reminders[i];
+    if(r.active)await gcalPushReminder(r);
+    else if(r.gcalEventId)await gcalDeleteReminderEvent(r);
+  }
+}
+async function gcalPullEvents(){
+  var now=new Date();
+  var json=await gcalApi('calendars/primary/events?timeMin='+encodeURIComponent(now.toISOString())+'&maxResults=15&singleEvents=true&orderBy=startTime');
+  S.gcalEvents=(json.items||[]).map(function(e){return{id:e.id,title:e.summary||'(untitled)',start:e.start&&(e.start.dateTime||e.start.date),allDay:!!(e.start&&e.start.date&&!e.start.dateTime),link:e.htmlLink};});
+}
+var _gcalSyncTimer=null;
+function scheduleGcalSync(){
+  var cfg=getGcalConfig();if(!cfg||!cfg.connected)return;
+  clearTimeout(_gcalSyncTimer);_gcalSyncTimer=setTimeout(function(){gcalSyncNow();},4000);
+}
+async function gcalSyncNow(){
+  if(GCAL.busy)return{ok:false,error:'Already syncing'};
+  GCAL.busy=true;
+  try{await gcalPushAll();await gcalPullEvents();GCAL.lastSync=Date.now();return{ok:true};}
+  catch(e){return{ok:false,error:e.message};}
+  finally{GCAL.busy=false;renderView();}
+}
+
+// ════════════════════════════════════════════════════════
 //  VIEW: CHECKLISTS / VOICE / MEETINGS
 // ════════════════════════════════════════════════════════
 function vChecklists(){
@@ -1722,7 +1832,7 @@ document.addEventListener('visibilitychange',function(){
 // ════════════════════════════════════════════════════════
 function vReminders(){
   var s=sec(); var aC=S.reminders.filter(function(r){return r.active;}).length;   var hdr=row('space-between'); hdr.style.alignItems='flex-end';   var hl=d(); hl.innerHTML='<h1 style="font-family:Lora,Georgia,serif;font-size:26px;font-weight:700;color:var(--text)">Reminders</h1><p style="color:var(--muted);font-size:14px;margin-top:4px">'+aC+' active reminders</p>';
-  hdr.appendChild(hl);   hdr.appendChild(btn(ic('plus',16,'#fff')+' Add','btn-primary',function(){showModal('New Reminder',520,function(body){var er=row();er.style.cssText+=';gap:8px;margin-bottom:8px';var ei=inp('⏰');ei.style.cssText='max-width:56px;text-align:center;font-size:20px;width:56px;padding:8px';var li=inp('Reminder name...');li.style.flex='1';er.appendChild(ei);er.appendChild(li);var tr=row();tr.style.cssText+=';gap:8px;margin-bottom:8px';var ti=document.createElement('input');ti.type='time';Object.assign(ti.style,{flex:'1',padding:'10px 14px',borderRadius:'10px',border:'1.5px solid #E4D8C8',background:'#FDF8F2',fontFamily:'DM Sans,sans-serif',fontSize:'14px',color:'#2E1F0F',outline:'none'});var sel=document.createElement('select');sel.style.cssText='flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);font-family:DM Sans,sans-serif;font-size:14px;color:var(--text)';['Once','Daily','Weekdays','Weekends','Weekly'].forEach(function(r){var o=document.createElement('option');o.textContent=r;sel.appendChild(o);});tr.appendChild(ti);tr.appendChild(sel);var br=d({display:'flex',gap:'8px'});br.appendChild(btn('Save','btn-primary',function(){if(!li.value.trim()||!ti.value.trim())return;S.reminders.push({id:Date.now(),emoji:ei.value||'⏰',label:li.value.trim(),time:ti.value.trim(),repeat:sel.value,active:true});closeModal();renderView();}));br.appendChild(btn('Cancel','btn-ghost',closeModal));body.appendChild(er);body.appendChild(tr);body.appendChild(br);});}));
+  hdr.appendChild(hl);   hdr.appendChild(btn(ic('plus',16,'#fff')+' Add','btn-primary',function(){showModal('New Reminder',520,function(body){var er=row();er.style.cssText+=';gap:8px;margin-bottom:8px';var ei=inp('⏰');ei.style.cssText='max-width:56px;text-align:center;font-size:20px;width:56px;padding:8px';var li=inp('Reminder name...');li.style.flex='1';er.appendChild(ei);er.appendChild(li);var tr=row();tr.style.cssText+=';gap:8px;margin-bottom:8px';var ti=document.createElement('input');ti.type='time';Object.assign(ti.style,{flex:'1',padding:'10px 14px',borderRadius:'10px',border:'1.5px solid #E4D8C8',background:'#FDF8F2',fontFamily:'DM Sans,sans-serif',fontSize:'14px',color:'#2E1F0F',outline:'none'});var sel=document.createElement('select');sel.style.cssText='flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);font-family:DM Sans,sans-serif;font-size:14px;color:var(--text)';['Once','Daily','Weekdays','Weekends','Weekly'].forEach(function(r){var o=document.createElement('option');o.textContent=r;sel.appendChild(o);});tr.appendChild(ti);tr.appendChild(sel);var br=d({display:'flex',gap:'8px'});br.appendChild(btn('Save','btn-primary',function(){if(!li.value.trim()||!ti.value.trim())return;S.reminders.push({id:Date.now(),emoji:ei.value||'⏰',label:li.value.trim(),time:ti.value.trim(),repeat:sel.value,active:true});closeModal();renderView();scheduleGcalSync();}));br.appendChild(btn('Cancel','btn-ghost',closeModal));body.appendChild(er);body.appendChild(tr);body.appendChild(br);});}));
   s.appendChild(hdr);
 
   if('Notification' in window){
@@ -1745,6 +1855,25 @@ function vReminders(){
   calCard.appendChild(calBtns);   var calNote=p({fontSize:'11px',color:'var(--muted)',marginTop:'10px',lineHeight:'1.5'},'💡 After downloading the .ics file: open it to import into Apple Calendar, or drag it into Outlook. On iPhone, save to Files then tap to import.');
   calCard.appendChild(calNote);
   s.appendChild(calCard);
+
+  var gcfgR=getGcalConfig();
+  if(gcfgR&&gcfgR.connected){
+    var gCard=card({padding:'16px'});
+    var gHdr=row('space-between');gHdr.style.alignItems='center';
+    gHdr.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'14px',color:'var(--text)'},'📅 Upcoming in Google Calendar'));
+    var gSyncBtn=btn('🔄','btn-ghost btn-sm',async function(){gSyncBtn.disabled=true;await gcalSyncNow();});
+    gSyncBtn.title='Sync now';gHdr.appendChild(gSyncBtn);
+    gCard.appendChild(gHdr);
+    var gEvents=S.gcalEvents||[];
+    if(!gEvents.length){gCard.appendChild(p({fontSize:'12px',color:'var(--muted)',marginTop:'8px'},GCAL.lastSync?'No upcoming events.':'Tap 🔄 to load your Google Calendar.'));}
+    else{gEvents.forEach(function(ev){
+      var er=d({display:'flex',alignItems:'center',gap:'8px',padding:'8px 0',borderTop:'1px solid var(--border)'});
+      var when=ev.allDay?ev.start:new Date(ev.start).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'});
+      er.innerHTML='<span style="flex:1;font-size:13px;color:var(--text)">'+ev.title+'</span><span style="font-size:11px;color:var(--muted)">'+when+'</span>';
+      gCard.appendChild(er);
+    });}
+    s.appendChild(gCard);
+  }
    var list=d({display:'flex',flexDirection:'column',gap:'10px'});
   S.reminders.forEach(function(r,i){
     var c=card({padding:'14px 16px',opacity:r.active?'1':'.6',animation:'fadeUp .3s ease '+(i*.05)+'s both'});
@@ -1753,7 +1882,7 @@ function vReminders(){
     var info=d({flex:'1',marginLeft:'12px'});info.innerHTML='<div style="font-weight:500;font-size:15px;color:var(--text)">'+r.label+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">⏰ '+r.time+' · 🔁 '+r.repeat+'</div>';
     var ctrl=row(); ctrl.style.gap='8px';
     ctrl.appendChild(badge(r.active?'Active':'Off',r.active?'var(--green)':'var(--muted)',r.active?'var(--glight)':'var(--bg-alt)'));
-    ctrl.appendChild(tog(r.active,function(){r.active=!r.active;renderView();}));
+    ctrl.appendChild(tog(r.active,function(){r.active=!r.active;renderView();scheduleGcalSync();}));
     var editBtn=(function(rem){
       var b=document.createElement('button');b.className='icon-btn';b.title='Edit reminder';b.innerHTML=ic('capture',13,'var(--muted)');
       b.onclick=function(){showModal('Edit Reminder',520,function(body){
@@ -1767,7 +1896,7 @@ function vReminders(){
         ['Once','Daily','Weekdays','Weekends','Weekly'].forEach(function(opt){var o=document.createElement('option');o.textContent=opt;o.value=opt;if(opt===rem.repeat)o.selected=true;sel.appendChild(o);});
         tr.appendChild(ti);tr.appendChild(sel);
         var br=d({display:'flex',gap:'8px'});
-        br.appendChild(btn('Save','btn-primary',function(){if(!li.value.trim()||!ti.value.trim())return;rem.emoji=ei.value||'⏰';rem.label=li.value.trim();rem.time=ti.value.trim();rem.repeat=sel.value;closeModal();renderView();}));
+        br.appendChild(btn('Save','btn-primary',function(){if(!li.value.trim()||!ti.value.trim())return;rem.emoji=ei.value||'⏰';rem.label=li.value.trim();rem.time=ti.value.trim();rem.repeat=sel.value;closeModal();renderView();scheduleGcalSync();}));
         br.appendChild(btn('Cancel','btn-ghost',closeModal));
         body.appendChild(er);body.appendChild(tr);body.appendChild(br);
       });};
@@ -1775,7 +1904,7 @@ function vReminders(){
     })(r);
     var delBtn=(function(rem){
       var b=document.createElement('button');b.className='icon-btn';b.title='Delete reminder';b.innerHTML=ic('trash',13,'var(--rose)');
-      b.onclick=function(){S.reminders=S.reminders.filter(function(x){return x.id!==rem.id;});renderView();};
+      b.onclick=function(){if(rem.gcalEventId)gcalDeleteReminderEvent(rem);S.reminders=S.reminders.filter(function(x){return x.id!==rem.id;});renderView();};
       return b;
     })(r);
     ctrl.appendChild(editBtn);ctrl.appendChild(delBtn);
@@ -1879,6 +2008,54 @@ function vSettings(){
     sc.appendChild(liveSec);s.appendChild(sc);
   })();
 
+  // Google Calendar live sync card
+  (function(){
+    var gc=card({padding:'20px'});
+    gc.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'6px',color:'var(--text)'},'🔗 Google Calendar (Live Sync)'));
+    gc.appendChild(p({fontSize:'13px',color:'var(--muted)',marginBottom:'14px',lineHeight:'1.55'},'Two-way sync: active reminders are pushed to your Google Calendar, and upcoming Google events show on the Reminders page. Sync runs automatically while Focusly is open — there\'s no server, so nothing syncs while the app is fully closed.'));
+    var box=d({padding:'14px',borderRadius:'12px',background:'var(--bg)',border:'1px solid var(--border)'});
+    var gcfg=getGcalConfig();
+    if(gcfg&&gcfg.connected){
+      box.appendChild(p({fontSize:'13px',color:'var(--green)',fontWeight:'600',marginBottom:'6px'},'✓ Connected'));
+      var lastP=p({fontSize:'12px',color:'var(--muted)',marginBottom:'10px'},GCAL.lastSync?('Last synced '+new Date(GCAL.lastSync).toLocaleTimeString()):'Not synced yet this session — tap Sync now.');
+      box.appendChild(lastP);
+      var gmsg=d({fontSize:'12px',minHeight:'16px',marginTop:'8px'});
+      var grow=d({display:'flex',gap:'8px',flexWrap:'wrap'});
+      var syncBtn=btn('🔄 Sync now','btn-primary btn-sm',async function(){
+        syncBtn.disabled=true;syncBtn.textContent='Syncing...';
+        var r=await gcalSyncNow();
+        syncBtn.disabled=false;syncBtn.textContent='🔄 Sync now';
+        gmsg.textContent=r.ok?'✓ Synced':'✗ '+r.error;gmsg.style.color=r.ok?'var(--green)':'var(--rose)';
+      });
+      var discBtn=btn('Disconnect','btn-ghost btn-sm',function(){if(confirm('Disconnect Google Calendar? Reminders already pushed will stay in your Google Calendar.')){gcalDisconnect();renderView();}});
+      grow.appendChild(syncBtn);grow.appendChild(discBtn);
+      box.appendChild(grow);box.appendChild(gmsg);
+    }else{
+      box.appendChild(p({fontSize:'12px',color:'var(--muted)',marginBottom:'10px',lineHeight:'1.55'},'Needs a free Google OAuth Client ID from your own Google Cloud project — Focusly has no server, so sync runs entirely in your browser.'));
+      var idI=inp('Client ID: xxxx.apps.googleusercontent.com');
+      idI.value=gcfg?gcfg.clientId:'';
+      Object.assign(idI.style,{width:'100%',padding:'9px 12px',borderRadius:'8px',border:'1.5px solid var(--border)',background:'var(--bg-alt)',fontFamily:'DM Sans,sans-serif',fontSize:'13px',color:'var(--text)',outline:'none',marginBottom:'10px'});
+      var gConnMsg=d({fontSize:'12px',minHeight:'16px',marginTop:'8px',wordBreak:'break-all'});
+      var gConnBtn=btn('Connect Google Calendar','btn-primary',async function(){
+        var id=idI.value.trim();
+        if(!id){gConnMsg.textContent='✗ Please paste your Client ID first.';gConnMsg.style.color='var(--rose)';return;}
+        setGcalConfig({clientId:id,connected:false});
+        gConnBtn.disabled=true;gConnBtn.textContent='Connecting...';
+        try{
+          await gcalConnect();
+          gConnMsg.textContent='✓ Connected!';gConnMsg.style.color='var(--green)';
+          setTimeout(function(){renderView();},800);
+        }catch(e){
+          gConnMsg.textContent='✗ '+(e&&e.message?e.message:'Could not connect');gConnMsg.style.color='var(--rose)';
+        }
+        gConnBtn.disabled=false;gConnBtn.textContent='Connect Google Calendar';
+      });
+      var gLink=document.createElement('a');gLink.href='https://console.cloud.google.com/apis/credentials';gLink.target='_blank';gLink.rel='noopener';gLink.style.cssText='font-size:11px;color:var(--accent);display:inline-block;margin-top:6px';gLink.textContent='→ How to get a free Client ID (Google Cloud Console)';
+      box.appendChild(idI);box.appendChild(gConnBtn);box.appendChild(gConnMsg);box.appendChild(gLink);
+    }
+    gc.appendChild(box);s.appendChild(gc);
+  })();
+
   var calSec=card({padding:'20px'});   calSec.appendChild(hx('h3',{fontFamily:'Lora,Georgia,serif',fontSize:'16px',marginBottom:'6px',color:'var(--text)'},'📅 Calendar & Reminders'));   calSec.appendChild(p({fontSize:'13px',color:'var(--muted)',marginBottom:'14px',lineHeight:'1.5'},'Export your Focusly reminders to any calendar app. The .ics format works with Apple Calendar, Google Calendar, and Microsoft Outlook.'));
   var calServices=[     {name:'Apple Calendar',emoji:'🍎',desc:'Download .ics → double-click to import',action:function(){exportICS(S.reminders);}},     {name:'Google Calendar',emoji:'📅',desc:'Open Google Calendar to add events',action:function(){if(S.reminders.find(function(r){return r.active;}))openGCalReminder(S.reminders.find(function(r){return r.active;}));else alert('Please activate some reminders first.');}},     {name:'Outlook / Office 365',emoji:'📧',desc:'Download .ics → open with Outlook',action:function(){exportICS(S.reminders);}},     {name:'Any CalDAV calendar',emoji:'📆',desc:'Download .ics → import in your app',action:function(){exportICS(S.reminders);}},
   ];
@@ -1920,7 +2097,16 @@ function bootApp(user) {
   sbApply();
   var sy=getSyncState();
   loadMediaLocally();
-  if(sy&&sy.binId){cloudPull(sy.binId,sy.apiKey).then(function(r){if(r.ok)restoreData(r.data);renderView();});}else{renderView();}
+  if(sy&&sy.binId){cloudPull(sy.binId,sy.apiKey).then(function(r){if(r.ok)restoreData(r.data);renderView();gcalAutoConnect();});}else{renderView();gcalAutoConnect();}
+}
+function gcalAutoConnect(){
+  setTimeout(function(){
+    var gcfg=getGcalConfig();
+    if(gcfg&&gcfg.connected&&window.google&&google.accounts&&google.accounts.oauth2){
+      gcalInitClient(gcfg.clientId);
+      gcalSyncNow();
+    }
+  },1500);
 }
  document.addEventListener('DOMContentLoaded', function() {
   applyTheme();
