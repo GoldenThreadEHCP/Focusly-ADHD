@@ -415,7 +415,20 @@ resize:none;min-height:60px;
       <span id="login-switch-text">Don't have an account?</span>
       <a id="login-switch-link" onclick="authToggle()"> Create one</a>
     </p>
-    <p class="login-note">🔒 Your data stays on this device. Password is hashed before storing — never sent anywhere.</p>
+    <p class="login-switch">
+      <span>On a new device?</span>
+      <a id="sync-code-toggle-link" onclick="toggleSyncCodeLogin()"> Sign in with your sync code</a>
+    </p>
+    <div id="sync-code-login" style="display:none;margin-top:10px">
+      <div class="login-field">
+        <label class="login-label">Sync code</label>
+        <input class="login-input" id="sync-code-input" type="text" placeholder="Paste the sync code from your other device">
+      </div>
+      <button class="btn btn-primary btn-full" id="sync-code-btn" onclick="syncCodeLogin()">Load my account</button>
+      <p class="login-err" id="sync-code-err"></p>
+      <p class="login-note">Find your sync code on your other device under Settings → Sync Across Devices → Copy sync code.</p>
+    </div>
+    <p class="login-note">🔒 Your data stays on this device unless you turn on cloud sync. Password is hashed before storing — never sent anywhere.</p>
   </div>
 </div>
 
@@ -496,7 +509,7 @@ var IC = {   info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2=
 // ════════════════════════════════════════════════════════
 //  CLOUD SYNC (JSONBin.io — free cross-device sync)
 // ════════════════════════════════════════════════════════
-var JSONBIN_API='https://api.jsonbin.io/v3/b'; function getSyncState(){return JSON.parse(localStorage.getItem('focusly_sync')||'null');} function setSyncState(st){if(st)localStorage.setItem('focusly_sync',JSON.stringify(st));else localStorage.removeItem('focusly_sync');} function gatherSaveData(){return{v:4,tasks:S.tasks,taskLists:S.taskLists||[],captures:S.captures.map(function(c){return{id:c.id,text:c.text,file:c.file?{name:c.file.name,type:c.file.type}:undefined};}),reminders:S.reminders,projects:S.projects,focus:{sound:S.focus.sound,dur:S.focus.dur,brk:S.focus.brk},sleep:S.sleep,habits:S.habits||[],moodLog:S.moodLog||[],water:S.water||0,intention:S.intention||'',musicEmbed:S.musicEmbed||'',energy:S.energy,timeBlocks:S.timeBlocks||[],medsLog:S.medsLog||{},weatherMood:S.weatherMood||'',streaks:S.streaks||{focus:0,days:0},checklists:S.checklists||[],deletedItems:S.deletedItems||[],widgets:getActiveWidgets(),navOrder:NAV_ORDER,savedAt:new Date().toISOString()};} function restoreData(d){if(!d||!d.v)return;['tasks','taskLists','captures','reminders','projects','sleep','habits','moodLog','timeBlocks','medsLog','checklists','deletedItems'].forEach(function(k){if(d[k])S[k]=d[k];});if(d.focus){S.focus.sound=d.focus.sound;S.focus.dur=d.focus.dur;S.focus.brk=d.focus.brk;}if(d.water!==undefined)S.water=d.water;if(d.intention)S.intention=d.intention;if(d.musicEmbed)S.musicEmbed=d.musicEmbed;if(d.energy)S.energy=d.energy;if(d.weatherMood)S.weatherMood=d.weatherMood;if(d.streaks)S.streaks=d.streaks;if(d.widgets)saveWidgets(d.widgets);if(d.navOrder){NAV_ORDER=d.navOrder;localStorage.setItem('focusly_nav_order',JSON.stringify(NAV_ORDER));}} function saveMediaLocally(){try{localStorage.setItem('focusly_voice',JSON.stringify((S.voiceNotes||[]).slice(0,20)));localStorage.setItem('focusly_meetings',JSON.stringify((S.meetings||[]).slice(0,10)));}catch(e){}} function loadMediaLocally(){try{S.voiceNotes=JSON.parse(localStorage.getItem('focusly_voice')||'[]');S.meetings=JSON.parse(localStorage.getItem('focusly_meetings')||'[]');}catch(e){S.voiceNotes=[];S.meetings=[];}} async function cloudPush(){
+var JSONBIN_API='https://api.jsonbin.io/v3/b'; function getSyncState(){return JSON.parse(localStorage.getItem('focusly_sync')||'null');} function setSyncState(st){if(st)localStorage.setItem('focusly_sync',JSON.stringify(st));else localStorage.removeItem('focusly_sync');} function gatherSaveData(){return{v:4,account:S.currentUser?{name:S.currentUser.name,email:S.currentUser.email,hash:S.currentUser.hash}:undefined,tasks:S.tasks,taskLists:S.taskLists||[],captures:S.captures.map(function(c){return{id:c.id,text:c.text,file:c.file?{name:c.file.name,type:c.file.type}:undefined};}),reminders:S.reminders,projects:S.projects,focus:{sound:S.focus.sound,dur:S.focus.dur,brk:S.focus.brk},sleep:S.sleep,habits:S.habits||[],moodLog:S.moodLog||[],water:S.water||0,intention:S.intention||'',musicEmbed:S.musicEmbed||'',energy:S.energy,timeBlocks:S.timeBlocks||[],medsLog:S.medsLog||{},weatherMood:S.weatherMood||'',streaks:S.streaks||{focus:0,days:0},checklists:S.checklists||[],deletedItems:S.deletedItems||[],widgets:getActiveWidgets(),navOrder:NAV_ORDER,savedAt:new Date().toISOString()};} function restoreData(d){if(!d||!d.v)return;['tasks','taskLists','captures','reminders','projects','sleep','habits','moodLog','timeBlocks','medsLog','checklists','deletedItems'].forEach(function(k){if(d[k])S[k]=d[k];});if(d.account&&d.account.email){S.currentUser=d.account;localStorage.setItem('focusly_user',JSON.stringify(d.account));}if(d.focus){S.focus.sound=d.focus.sound;S.focus.dur=d.focus.dur;S.focus.brk=d.focus.brk;}if(d.water!==undefined)S.water=d.water;if(d.intention)S.intention=d.intention;if(d.musicEmbed)S.musicEmbed=d.musicEmbed;if(d.energy)S.energy=d.energy;if(d.weatherMood)S.weatherMood=d.weatherMood;if(d.streaks)S.streaks=d.streaks;if(d.widgets)saveWidgets(d.widgets);if(d.navOrder){NAV_ORDER=d.navOrder;localStorage.setItem('focusly_nav_order',JSON.stringify(NAV_ORDER));}} function saveMediaLocally(){try{localStorage.setItem('focusly_voice',JSON.stringify((S.voiceNotes||[]).slice(0,20)));localStorage.setItem('focusly_meetings',JSON.stringify((S.meetings||[]).slice(0,10)));}catch(e){}} function loadMediaLocally(){try{S.voiceNotes=JSON.parse(localStorage.getItem('focusly_voice')||'[]');S.meetings=JSON.parse(localStorage.getItem('focusly_meetings')||'[]');}catch(e){S.voiceNotes=[];S.meetings=[];}} async function cloudPush(){
   var data=gatherSaveData(), sync=getSyncState();
   if(!sync||!sync.apiKey) return{ok:false,error:'Not configured'};
   var isAuthErr=function(msg){return msg&&(msg.toLowerCase().includes('invalid')||msg.toLowerCase().includes('access')||msg.toLowerCase().includes('belong')||msg.toLowerCase().includes('unauthori'));};
@@ -583,6 +596,29 @@ function authLogout() {
   clearSession();
   document.getElementById('app-shell').classList.remove('show');
   document.getElementById('login-page').classList.add('show');   AUTH_MODE = 'login';   document.getElementById('login-title').textContent = 'Welcome back';   document.getElementById('login-sub').textContent = 'Sign in to your Focusly account';   document.getElementById('login-name-field').style.display = 'none';   document.getElementById('login-submit-btn').textContent = 'Sign in';   document.getElementById('login-submit-btn').disabled = false;   document.getElementById('login-err').textContent = '';   document.getElementById('login-email').value = '';   document.getElementById('login-pw').value = '';
+  document.getElementById('sync-code-login').style.display='none';   document.getElementById('sync-code-input').value='';   document.getElementById('sync-code-err').textContent='';
+}
+function toggleSyncCodeLogin(){
+  var panel=document.getElementById('sync-code-login');
+  panel.style.display=panel.style.display==='none'?'block':'none';
+}
+async function syncCodeLogin(){
+  var codeEl=document.getElementById('sync-code-input'), errEl=document.getElementById('sync-code-err'), btnEl=document.getElementById('sync-code-btn');
+  var code=codeEl.value.trim();
+  errEl.textContent='';
+  if(!code){errEl.textContent='Paste your sync code first.';return;}
+  var dc;
+  try{dc=JSON.parse(atob(code));if(!dc.b||!dc.k)throw 0;}catch(e){errEl.textContent='That doesn\'t look like a valid sync code.';return;}
+  btnEl.disabled=true;btnEl.textContent='Loading...';
+  var r=await cloudPull(dc.b,dc.k);
+  btnEl.disabled=false;btnEl.textContent='Load my account';
+  if(!r.ok||!r.data){errEl.textContent='✗ '+(r.error||'Could not reach that sync code.');return;}
+  var acct=r.data.account;
+  if(!acct||!acct.email){errEl.textContent='This sync code has no account attached yet — on your other device, open Settings → Sync Across Devices → Save now, then copy a fresh sync code.';return;}
+  localStorage.setItem('focusly_user',JSON.stringify(acct));
+  setSyncState({binId:dc.b,apiKey:dc.k});
+  saveSession(acct,true);
+  bootApp(acct);
 }
 
 // ════════════════════════════════════════════════════════
